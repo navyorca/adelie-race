@@ -180,7 +180,7 @@ button{font:inherit;cursor:pointer}
 .rank li svg{height:20px;width:auto;flex:0 0 auto}
 .rank li b{font-family:var(--dot);font-weight:400;color:#9CC3FF;min-width:1.6em}
 .rank li.out{opacity:.5}
-@media(max-width:640px){.arena{flex-direction:column}.rank{width:auto}.rank ol{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
+@media(max-width:640px){.arena{flex-direction:column}.field{flex:0 0 auto}.game.pinm .rank{width:auto}.rank{width:auto}.rank ol{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 .cd{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.3);font-family:var(--dot);font-size:22px;color:#00007F;pointer-events:none;background:#FFFFFF;border:3px solid #00007F;box-shadow:4px 4px 0 #1F4FD8;padding:10px 26px;z-index:9000}
 .cd.pop{animation:cdpop .35s steps(4)}
 @keyframes cdpop{0%{transform:translate(-50%,-50%) scale(2.4)}100%{transform:translate(-50%,-50%) scale(1.3)}}
@@ -242,6 +242,27 @@ button{font:inherit;cursor:pointer}
 .result li.win{background:var(--pick);color:var(--pickInk);font-weight:800}
 .result li.win b{color:var(--pickInk)}
 .row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+/* 261025 핀볼 모드: 세로 핀볼대(판은 SVG, 펭귄이 공). 위 띠는 핀볼 점수판(DMD)처럼 */
+.field.pinball{background:#06103A;background-image:none}
+.field.pinball::before,.field.pinball::after{content:none}
+.pbt{position:absolute;display:block}
+.pbt text{font-family:var(--f)}
+.pbt .on{fill:#FFE58A}.pbt .sk{fill:#FF7AA2;animation:blink .2s steps(1) infinite}
+.pbt .hit circle,.pbt polygon.hit{fill:#FFFFFF}
+.pbt .dn{opacity:.18}
+.dmd{position:absolute;top:8px;display:flex;flex-wrap:wrap;gap:2px 16px;justify-content:center;align-items:center;min-height:40px;padding:4px 10px;background:#000000;border:3px solid #FF9F1C;color:#FF9F1C;font-size:18px}
+.dmd b{font-family:var(--dot);font-weight:400;color:#FFE58A}
+.dmd .fv{color:#000000;background:#FF7AA2;padding:0 6px;animation:blink .3s steps(1) infinite}
+.pbp{position:absolute;left:0;top:0;z-index:6000;pointer-events:none;font-family:var(--dot);font-size:18px;color:#FFE58A;text-shadow:2px 2px 0 #0A1A5C;white-space:nowrap;animation:pbp .8s steps(8) forwards}
+.pbp.big{font-size:22px;color:#FFFFFF;background:#E5484D;border:2px solid #FFFFFF;padding:0 6px;text-shadow:none}
+@keyframes pbp{from{transform:translate(var(--x),var(--y))}to{transform:translate(var(--x),calc(var(--y) - 40px));opacity:0}}
+.field.pinball .runner .tag{display:none}
+.field.pinball .runner.tg .tag{display:block}
+.field.pinball .runner .sp{animation:none}
+.game.pinm .prog{display:none}
+.game.pinm .rank{width:220px}
+.rank li i{margin-left:auto;font-style:normal;font-family:var(--dot);color:#FFE58A}
+.rank li .nm{overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.runner .sp,.runner.walk .sp,.runner.win .sp,.pd .pc{animation:none}}
 </style>
 
@@ -378,6 +399,7 @@ function putObj(o){o.el.style.transform=`translate(${PX(o.x)+S/2-o.w/2}px,${FY(o
 
 function build(){
   const n=names.length,f=fieldEl();
+  PB=null;f.classList.remove('pinball');document.querySelector('.game').classList.remove('pinm');$('rest').previousElementSibling.textContent='REST';
   f.innerHTML='<div class="goal"></div><canvas class="pfx" id="pfx"></canvas>';
   FW=f.clientWidth||600;S=Math.round(Math.max(72,Math.min(104,FW*.11)));UNIT=S/38;   // 261007 펭귄 더 크게(폰 폭 약 330px에서도 72px)
   FH=Math.max(420,Math.min(900,180+n*S*.75));f.style.height=FH+'px';FW=f.clientWidth||600;
@@ -409,6 +431,7 @@ function build(){
   const cv=$('pfx');cv.width=FW;cv.height=FH;PF=PFX(cv);
   R.forEach(place);ranks();
   $('result').hidden=true;showWins();$('left').textContent=n;$('rest').textContent='1000m';$('time').textContent='0.0';
+  if($('gmode').value==='pin')pbBuild();
 }
 // 연출 효과: 도트 한 칸 크기를 캐릭터와 맞춘 짧은 폭발·물보라·먼지·반짝임·꽃가루
 // 도트 입자: 네모 조각이 사방으로 튀고 중력으로 떨어지며 사라진다
@@ -476,6 +499,7 @@ function useItem(r){
 
 // ponytail: 모든 공격·회피는 순수 난수, 역전 보정 없음. 실제 순서 추첨이라 공정성이 우선
 function tick(now){
+  if(PB){pbTick(now);return}
   const dt=Math.min(.05,(now-last)/1000)*SPD*turbo*(now<slowUntil&&turbo===1?.35:1);last=now;G+=dt*1000;
   RS=shuffle(R.slice());
   let order=R.filter(r=>r.done).length;
@@ -648,14 +672,14 @@ function tick(now){
   const lead=Math.max(...R.map(r=>r.x));
   if(!hurried&&lead>.72)hurry();
   for(const r of RS){r.pm.style.left=`calc(14px + ${r.x*100}% - ${r.x*48}px)`;r.pm.style.display=r.elim?'none':''}   // 261007 탈락자는 내비게이터에서도 지움
-  $('rest').textContent=pinMode?Math.max(0,(pinLimit-G)/1000).toFixed(1)+'초':Math.max(0,Math.round((1-lead)*1000))+'m';
+  $('rest').textContent=Math.max(0,Math.round((1-lead)*1000))+'m';
   $('time').textContent=((now-t0)/1000).toFixed(1);
   $('left').textContent=R.length-order-elimCount;
   if((G|0)%200<40)ranks();
   showWins();
   // 결과 확정 = 스킵: 앞에서 모드는 5명 도착 뒤 1~3등 고정(깃발 뺏기는 5번째 도착까지만), 뒤에서 모드는 탈락자가 당첨 수만큼 나오면 고정
   const k=+$('topn').value,back=$('mode').value==='back';
-  if(order+elimCount<R.length&&((back?elimCount>=k:order>=(pinMode?k:5))||(pinMode&&G>pinLimit))){
+  if(order+elimCount<R.length&&(back?elimCount>=k:order>=5)){
     R.filter(alive).sort((a,b)=>b.x-a.x).forEach(r=>{r.done=++order;setState(r,'done',0);r.el.classList.remove('walk','star','boost')});
     feed('당첨 확정! 나머지 순위는 지금 위치로 정합니다');eventBanner('당첨 확정!','결과로 바로 갑니다','#2BB673');ranks();showWins();
     setTimeout(finish,1200);return}
@@ -663,6 +687,7 @@ function tick(now){
 }
 function showWins(){
   const k=+$('topn').value,back=$('mode').value==='back';
+  if(PB){const s=[...R].sort((a,b)=>back?a.sc-b.sc:b.sc-a.sc).slice(0,k);$('winlbl').textContent=back?`점수 낮은 ${k}명`:`점수 ${k}등까지`;$('wins').textContent=s.some(r=>r.sc)?s.map(r=>r.name).join('·'):'아직 없음';return}
   if(back){const out=R.filter(r=>r.elim).sort((a,b)=>a.elim-b.elim).slice(0,k);$('winlbl').textContent=`꼴찌 ${k}명(먼저 탈락순)`;$('wins').textContent=out.length?out.map(r=>r.name).join('·'):'아직 없음';return}
   const got=R.filter(r=>r.done&&r.done<=k).sort((a,b)=>a.done-b.done);
   $('winlbl').textContent=`${k}등까지 당첨`;$('wins').textContent=got.length?got.map(r=>r.done+'등 '+r.name).join('·'):'아직 없음';
@@ -713,29 +738,180 @@ function tetWorld(dt){
       if(r.sq){r.nextPose='front';setState(r,'down',1100)}else{setState(r,'walk',0);r.boost=G+900;fx('spark',r)}})}
 }
 function tetHop(r,v,flip){r.hopU=G+460;r.hopV=v;r.hopF=flip}
-// 261007 핀볼 모드: 경주 대신 처음부터 끝까지 핀볼. 깃발 1→2→3 차례로 먼저 건드린 순서가 등수, 구멍에 빠지면 장외처럼 날아가 탈락
-let pinMode=false,pinK=1,drainOn=0,pinLimit=0,pinRush=false;
-function startPinMode(){
-  pinning=true;pinEnd=Infinity;pinK=1;drainOn=G+2500;const f=fieldEl();f.classList.add('pin');[1,2,3].forEach(k=>$('pole'+k).style.visibility='hidden');
-  OBJ.filter(o=>o.type==='hole'||o.type==='box').forEach(delObj);OBJ=OBJ.filter(o=>o.live);
-  for(let i=0;i<6;i++){const w=10*UNIT*2;const o={type:'bump',x:rnd(.15,.85),y:rnd(.1,.9),w,h:w,el:mk(svg('bumper',''),'bump',w),live:1};OBJ.push(o);putObj(o)}
-  for(let i=0;i<2;i++){const w=dotW('hole')*1.8,o={type:'drain',x:i?rnd(.55,.8):rnd(.2,.45),y:i?rnd(.1,.4):rnd(.6,.9),w,h:+SP.hole.vb.split(' ')[3]*UNIT*1.8,el:mk(svg('hole',''),'hole',w),live:1};OBJ.push(o);putObj(o)}
-  const w=9*UNIT*2;const fl={type:'pinflag',x:.5,y:.5,vx:rnd(-140,140),vy:rnd(-140,140),w,h:12*UNIT*2,el:mk(svg('flag1',''),'flee',w),live:1,readyAt:G+2500};OBJ.push(fl);putObj(fl);
-  // 261007 "느리고 뭉쳐 보임": 경기장 전체에 격자로 흩어 놓고 빠르게 튕긴다, 25초 제한
-  const cols=Math.ceil(Math.sqrt(R.length*1.6)),rows=Math.ceil(R.length/cols);pinLimit=G+25000;pinRush=false;
-  shuffle(R.slice()).forEach((r,i)=>{setState(r,'pin',1e9);r.x=.06+.86*((i%cols)+.5)/cols;r.y=.08+.84*(((i/cols)|0)+.5)/rows;r.ty=r.y;
-    const a=rnd(0,6.28),sp=rnd(620,880);r.vx=Math.cos(a)*sp;r.vy=Math.sin(a)*sp;r.z=0});
-  feed('핀볼 모드! 깃발 1·2·3을 차례로 먼저 건드리면 그 등수, 구멍에 빠지면 탈락');eventBanner('핀볼 모드!','깃발 1·2·3 차례로 · 구멍 조심','#C77DFF');
+// 261025 핀볼 모드 개편(네오 "기존 핀볼게임 참고해서 레이아웃 싹 갈아엎어"): 세로 핀볼대. 펭귄이 곧 공, 제한 시간이 끝나면 점수 높은 순으로 등수
+// 판 좌표는 480×800 단위(위 → 아래 y 증가), 중력으로 굴러 내려오고 플리퍼는 자동(가끔 헛침). 배치는 지식배달_261025 레퍼런스 분석 기준
+let pinMode=false,PB=null;
+const PBW=480,PBH=800,BR=14,PB_LIMIT=40000,PB_BALLS=2;
+const PBUMP=[[160,205],[280,205],[220,285]],PLANE=[130,190,250,310],PDROP=[150,190,230],PSAU=[310,385];
+const FLEN=66,FDOWN=.5,FUP=-.4;
+const fmt=n=>n.toLocaleString('ko-KR');
+function pbWalls(){
+  const W=[],w=(...p)=>{for(let i=0;i<p.length-2;i+=2)W.push({x1:p[i],y1:p[i+1],x2:p[i+2],y2:p[i+3],t:'w'})};
+  w(20,800,20,120,45,62,100,30,380,30,432,52,460,105,460,800);   // 바깥 벽(위는 둥근 지붕)
+  w(420,800,420,175);w(420,800,460,800);                          // 플런저 길
+  for(const x of [100,160,220,280,340])w(x,58,x,100);             // 롤오버 레인 칸막이
+  w(56,190,56,400);w(20,440,72,478);                              // 왼쪽 램프 안벽 · 아래 덮개
+  w(384,195,384,400);w(420,440,368,478);                          // 오른쪽 오빗 안벽 · 아래 덮개
+  w(60,585,60,640,132,698);w(380,585,380,640,308,698);            // 인레인 가이드(바깥은 아웃레인)
+  w(88,585,88,640,126,666);w(352,585,352,640,314,666);            // 슬링샷 두 변
+  W.push({x1:88,y1:585,x2:126,y2:666,t:'sl',i:0},{x1:352,y1:585,x2:314,y2:666,t:'sl',i:1});   // 슬링샷 튕김면
+  return W;
 }
-function pinAward(w,fl){
-  w.done=R.filter(r=>r.done).length+1;setState(w,'done',0);w.rot=0;w.x=1;w.el.classList.remove('walk','star','boost');showFlag(w);fx('confetti',w,1);goalPop(w);shake(250,5);
-  feed(`${w.name} ${w.done}등 깃발을 잡았습니다!`);
-  if(pinK<3){pinK++;fl.el.innerHTML=svg('flag'+pinK,'');fl.el.firstChild.style.width=fl.w+'px';fl.x=rnd(.3,.7);fl.y=rnd(.2,.8);fl.vx=rnd(-160,160);fl.vy=rnd(-160,160);fl.readyAt=G+1800;eventBanner(pinK+'등 깃발!','다음 깃발 등장','#C77DFF')}
-  else delObj(fl);
+function pbSvg(tw,th){
+  const E=[],ln=s=>`<line x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="#00007F" stroke-width="6" stroke-linecap="square"/>`,tx=(x,y,t,c)=>`<text x="${x}" y="${y}" fill="${c}" font-size="14" text-anchor="middle">${t}</text>`;
+  E.push('<rect width="480" height="800" fill="#06103A"/><polygon points="20,800 20,120 45,62 100,30 380,30 432,52 460,105 460,800" fill="#EAF3FF"/>');
+  for(let y=140;y<800;y+=40)E.push(`<rect x="24" y="${y}" width="392" height="2" fill="#D6E6FA"/>`);   // 빙판 결
+  E.push('<rect x="22" y="190" width="34" height="250" fill="#D7C8FF"/><rect x="386" y="195" width="34" height="245" fill="#BFD8FF"/><rect x="422" y="175" width="36" height="623" fill="#CFE0F5"/>');
+  for(let y=236;y<420;y+=46)E.push(`<polygon points="38,${y} 28,${y+14} 48,${y+14}" fill="#7C5CFF"/><polygon points="402,${y} 392,${y+14} 412,${y+14}" fill="#2F6BFF"/>`);
+  E.push(tx(38,182,'램프','#7C5CFF'),tx(402,188,'오빗','#2F6BFF'),tx(310,424,'크릴','#E5484D'),tx(190,352,'타깃','#7C5CFF'));
+  E.push('<rect x="22" y="690" width="36" height="108" fill="#FFD9D9"/><rect x="382" y="690" width="36" height="108" fill="#FFD9D9"/>');   // 아웃레인(빠지면 배수구)
+  E.push('<rect x="60" y="752" width="320" height="48" fill="#0A1A5C"/><rect x="430" y="776" width="20" height="20" fill="#9AA3B5"/><rect x="430" y="780" width="20" height="2" fill="#5A6488"/><rect x="430" y="786" width="20" height="2" fill="#5A6488"/>');
+  E.push('<rect id="pkb" x="28" y="660" width="24" height="10" fill="#2BB673"/>');
+  PLANE.forEach((x,i)=>E.push(`<rect id="pl${i}" x="${x-9}" y="72" width="18" height="18" fill="#FFFFFF" stroke="#00007F" stroke-width="3"/>`));
+  E.push('<polygon id="psl0" points="88,585 88,640 126,666" fill="#FF9F1C"/><polygon id="psl1" points="352,585 352,640 314,666" fill="#FF9F1C"/>');
+  PBUMP.forEach(([x,y],i)=>E.push(`<g id="pbm${i}"><circle cx="${x}" cy="${y}" r="24" fill="#E5484D" stroke="#00007F" stroke-width="4"/><circle cx="${x}" cy="${y}" r="11" fill="#FFE58A"/></g>`));
+  PDROP.forEach((x,i)=>E.push(`<rect id="pdt${i}" x="${x-15}" y="362" width="30" height="12" fill="#C77DFF" stroke="#00007F" stroke-width="3"/>`));
+  E.push(`<circle id="psau" cx="${PSAU[0]}" cy="${PSAU[1]}" r="17" fill="#0A1A5C" stroke="#FF7AA2" stroke-width="4"/><rect x="302" y="380" width="4" height="4" fill="#FF7AA2"/><rect x="312" y="386" width="4" height="4" fill="#FF7AA2"/>`);
+  for(const s of PB.W)E.push(ln(s));
+  PB.fl.forEach((q,i)=>E.push(`<g id="pf${i}"><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#00007F" stroke-width="18" stroke-linecap="round"/><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#E5484D" stroke-width="10" stroke-linecap="round"/></g>`));
+  return `<svg class="pbt" viewBox="0 0 ${PBW} ${PBH}" style="width:${tw}px;height:${th}px" aria-hidden="true">${E.join('')}</svg>`;
 }
-function pinDrain(r){
-  r.flyDir=r.y<.5?-1:1;r.flyT=1;r.elim=++elimCount;r.faint=1;setState(r,'elim',1e9);fx('splash',r,1);fx('pow',r,1);flyOut(r);shake(250,6);
-  feed(`${r.name} 구멍에 빠져 탈락!`);
+// 판 그리기 + 펭귄을 발사 대기열에 세운다(출발 전 미리보기도 이 화면)
+function pbBuild(){
+  const f=fieldEl();f.innerHTML='';f.classList.add('pinball');document.querySelector('.game').classList.add('pinm');
+  FW=f.clientWidth||600;const k=Math.min((FW-16)/PBW,Math.max(520,innerHeight-150)/PBH),tw=PBW*k,th=PBH*k;
+  PB={k,ox:Math.round((FW-tw)/2),oy:56,W:pbWalls(),lanes:[0,0,0,0],drop:[1,1,1],jack:1000,kick:1,fever:0,hurry:0,sau:null,sauT:0,sauCd:0,skill:0,
+    fl:[{px:140,py:705,s:1},{px:300,py:705,s:-1}].map(q=>({...q,a:FDOWN,up:0,cd:0,om:0})),Q:[],nextL:Infinity,limit:Infinity,over:0,lit:{},dmdAt:0,rkAt:0};
+  f.insertAdjacentHTML('beforeend',`<div class="dmd" id="dmd" style="left:${PB.ox}px;width:${tw}px"></div>${pbSvg(tw,th)}<canvas class="pfx" id="pfx"></canvas>`);
+  pbDmd();PB.oy=$('dmd').offsetHeight+16;const sv=f.querySelector('.pbt');sv.style.left=PB.ox+'px';sv.style.top=PB.oy+'px';
+  FH=PB.oy+th+8;f.style.height=FH+'px';
+  const hp=BR*2.7*k;
+  for(const r of R){f.appendChild(r.el);r.el.classList.remove('walk','win');r.el.style.display='none';r.el.style.height=hp+'px';r.el.style.opacity=1;r.fl.style.display='none';
+    const [,,vw,vh]=SP[r.look.k==='아델리펭귄'?'adelie':r.look.k].vb.split(' ').map(Number);r.hw=hp*vw/vh/2;r.hh=hp/2;
+    Object.assign(r,{ps:'wait',sc:0,mult:1,balls:PB_BALLS,rot:0,fz:[0,0],laneCd:0,orbCd:0,combo:0,lastShot:-1e9,still:0,tgU:0,done:0,elim:0})}
+  PB.Q=shuffle(R.slice());
+  const cv=$('pfx');cv.width=FW;cv.height=FH;PF=PFX(cv);
+  $('rest').previousElementSibling.textContent='남은 시간';$('rest').textContent=(PB_LIMIT/1000).toFixed(1)+'초';
+  $('feed').innerHTML='<p>핀볼대에 모였습니다. 범퍼·레인·타깃·크릴 구멍으로 점수를 모으세요.</p>';pbDmd();ranks();
+}
+function pbStart(){
+  PB.nextL=G+300;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
+  feed('핀볼 모드! 펭귄이 공이 되어 튕깁니다. 40초 뒤 점수 높은 순으로 등수');eventBanner('핀볼 모드!','40초 · 점수 순으로 등수','#C77DFF');
+}
+function pbLaunch(r){Object.assign(r,{ps:'play',x:440,y:770,vx:0,vy:-rnd(1550,1800),launchAt:G,saveUntil:G+5000,still:0});r.el.style.display='';
+  if(PF)pbFx('dust',440,780)}
+const pbX=x=>PB.ox+x*PB.k,pbY=y=>PB.oy+y*PB.k;
+function pbFx(kind,x,y,big){if(!PF)return;const [cols,n,sp,g,sz,life,up]=FXP[kind];PF.add(pbX(x),pbY(y),n*(big?2:1),cols,sp*(big?1.3:1),g,sz,life,up)}
+function pbPop(r,t,cls){const d=document.createElement('div');d.className='pbp'+(cls?' '+cls:'');d.textContent=t;
+  d.style.setProperty('--x',pbX(r.x)-20+'px');d.style.setProperty('--y',pbY(r.y)-PB.k*BR*3+'px');fieldEl().appendChild(d);setTimeout(()=>d.remove(),820)}
+function pbScore(r,p){const m=r.mult*(PB.fever>G||PB.hurry?2:1),v=p*m;r.sc+=v;if(v>=250){pbPop(r,'+'+fmt(v));r.tgU=G+1500}return v}
+function pbLight(id,ms){PB.lit[id]=G+(ms||110)}
+function segHit(b,x1,y1,x2,y2,rad,e){
+  const dx=x2-x1,dy=y2-y1;let t=((b.x-x1)*dx+(b.y-y1)*dy)/(dx*dx+dy*dy);t=t<0?0:t>1?1:t;
+  const cx=x1+t*dx,cy=y1+t*dy;let nx=b.x-cx,ny=b.y-cy;const d=Math.hypot(nx,ny);if(d>=rad||d<1e-6)return null;nx/=d;ny/=d;
+  b.x=cx+nx*rad;b.y=cy+ny*rad;const vn=b.vx*nx+b.vy*ny;if(vn<0){b.vx-=(1+e)*vn*nx;b.vy-=(1+e)*vn*ny}return{nx,ny,vn,cx,cy};
+}
+function pbStep(h){
+  for(const q of PB.fl){const pa=q.a,tg=q.up>G?FUP:FDOWN;q.a=tg<q.a?Math.max(tg,q.a-30*h):Math.min(tg,q.a+14*h);q.om=(q.a-pa)/h}
+  const B=R.filter(r=>r.ps==='play');
+  for(const b of B){
+    b.vy+=1100*h;b.x+=b.vx*h;b.y+=b.vy*h;
+    const sp=Math.hypot(b.vx,b.vy);if(sp>1800){b.vx*=1800/sp;b.vy*=1800/sp}
+    for(const s of PB.W){const c=segHit(b,s.x1,s.y1,s.x2,s.y2,BR+3,s.t==='sl'?.2:.45);
+      if(c&&s.t==='sl'&&c.vn<-80){b.vx+=c.nx*520;b.vy+=c.ny*520;pbScore(b,10);pbLight('psl'+s.i);pbFx('spark',b.x,b.y)}}
+    PDROP.forEach((x,i)=>{if(!PB.drop[i])return;const c=segHit(b,x-15,368,x+15,368,BR+6,.5);if(c&&c.vn<-120)pbTarget(b,i)});
+    PBUMP.forEach(([x,y],i)=>{let nx=b.x-x,ny=b.y-y;const d=Math.hypot(nx,ny);if(d>=BR+24||d<1e-6)return;nx/=d;ny/=d;b.x=x+nx*(BR+24);b.y=y+ny*(BR+24);
+      const vn=b.vx*nx+b.vy*ny;b.vx-=vn*nx;b.vy-=vn*ny;b.vx+=nx*Math.max(720,Math.abs(vn));b.vy+=ny*Math.max(720,Math.abs(vn));
+      pbScore(b,100);PB.jack+=20;pbLight('pbm'+i);pbFx('spark',x+nx*24,y+ny*24);shake(70,2)});
+    PB.fl.forEach(q=>{const an=q.s>0?q.a:Math.PI-q.a,om=q.s>0?q.om:-q.om,ex=q.px+Math.cos(an)*FLEN,ey=q.py+Math.sin(an)*FLEN;
+      const vx=b.vx,vy=b.vy,c=segHit(b,q.px,q.py,ex,ey,BR+8,0);if(!c)return;b.vx=vx;b.vy=vy;
+      const px=-om*(c.cy-q.py),py=om*(c.cx-q.px),rx=b.vx-px,ry=b.vy-py,rn=rx*c.nx+ry*c.ny;
+      if(rn<0){b.vx=px+rx-1.3*rn*c.nx;b.vy=py+ry-1.3*rn*c.ny}});
+    // 크릴 구멍(잭팟): 느리게 들어오면 붙잡았다가 위로 뱉는다. 뱉은 공은 2.5초간 다시 못 들어감(같은 공이 잭팟을 되풀이하던 문제)
+    {const dx=b.x-PSAU[0],dy=b.y-PSAU[1],d=Math.hypot(dx,dy);
+      if(d<16&&!PB.sau&&G>PB.sauCd&&G>(b.sauCd||0)&&Math.hypot(b.vx,b.vy)<1100)pbJackpot(b);
+      else if(d<BR+12&&PB.sau!==b&&(PB.sau||G<=PB.sauCd||G<=(b.sauCd||0))){const nx=dx/(d||1),ny=dy/(d||1);b.x=PSAU[0]+nx*(BR+12);b.y=PSAU[1]+ny*(BR+12);b.vx+=nx*300;b.vy+=ny*300}}
+    // 롤오버 레인: 4칸을 다 켜면 그 펭귄 배수 +1(최대 ×3, 한 명이 너무 앞서지 않게). 발사 직후 깜빡이는 칸에 먼저 들어가면 스킬샷
+    if(b.y>62&&b.y<104&&G>b.laneCd)PLANE.forEach((x,i)=>{if(Math.abs(b.x-x)>22)return;b.laneCd=G+500;
+      if(!b.skillDone){b.skillDone=1;if(i===PB.skill&&G-b.launchAt<3000){pbScore(b,1000);pbPop(b,'스킬샷!','big');feed(`${b.name} 스킬샷! 깜빡이는 레인에 쏙`)}}
+      if(!PB.lanes[i]){PB.lanes[i]=1;pbScore(b,50)}
+      if(PB.lanes.every(Boolean)){PB.lanes=[0,0,0,0];b.mult=Math.min(3,b.mult+1);pbPop(b,'×'+b.mult,'big');b.tgU=G+2000;feed(`${b.name} 레인 4칸 완성! 점수 ×${b.mult}`)}});
+    // 램프·오빗: 3.5초 안에 다시 타면 콤보로 점수가 커진다
+    const orb=b.y>280&&b.y<320&&(b.x<56||b.x>384&&b.x<420);
+    if(orb&&G>b.orbCd){b.orbCd=G+900;b.combo=G-b.lastShot<3500?b.combo+1:1;b.lastShot=G;pbScore(b,300*b.combo);
+      if(b.combo>=2){pbPop(b,b.combo+'콤보!','big');feed(`${b.name} ${b.x<56?'램프':'오빗'} ${b.combo}연속 콤보!`)}}
+    // 킥백: 왼쪽 아웃레인에 불이 켜져 있으면 한 번 되쏜다
+    if(PB.kick&&b.x<60&&b.y>672&&b.vy>0){PB.kick=0;b.vy=-1500;b.vx=rnd(20,90);pbFx('pow',b.x,b.y);shake(160,3);feed(`킥백! ${b.name} 아웃레인에서 튕겨 올라옵니다`)}
+  }
+  for(let i=0;i<B.length;i++)for(let j=i+1;j<B.length;j++){const a=B[i],c=B[j];let nx=c.x-a.x,ny=c.y-a.y;const d=Math.hypot(nx,ny);
+    if(d>=BR*2||d<1e-6)continue;nx/=d;ny/=d;const o=(BR*2-d)/2;a.x-=nx*o;a.y-=ny*o;c.x+=nx*o;c.y+=ny*o;
+    const rv=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;if(rv<0){const im=-.95*rv;a.vx-=im*nx;a.vy-=im*ny;c.vx+=im*nx;c.vy+=im*ny}}
+}
+function pbTarget(b,i){PB.drop[i]=0;pbScore(b,250);pbFx('pow',PDROP[i],368);
+  if(PB.drop.some(Boolean))return;
+  pbScore(b,1000);pbPop(b,'미션 완료!','big');b.tgU=G+2500;PB.fever=G+7000;PB.kick=1;slow(500);
+  eventBanner('FEVER!',`${b.name} 타깃 정리 · 7초간 점수 2배`,'#FF7AA2');feed(`${b.name} 드롭 타깃 3개 정리! 피버 타임, 킥백 다시 켜짐`);
+  setTimeout(()=>{if(PB)PB.drop=[1,1,1]},1500);
+}
+function pbJackpot(b){PB.sau=b;PB.sauT=G+900;b.ps='hold';b.x=PSAU[0];b.y=PSAU[1];b.vx=b.vy=0;
+  const v=pbScore(b,PB.jack);pbPop(b,'잭팟 +'+fmt(v),'big');b.tgU=G+2500;PB.jack=1000;
+  pbFx('confetti',b.x,b.y,1);pbFx('pow',b.x,b.y,1);shake(300,6);slow(500);eventBanner('잭팟!',`${b.name} 크릴 구멍 +${fmt(v)}`,'#F7B500');feed(`${b.name} 크릴 구멍 잭팟! ${fmt(v)}점`)}
+function pbDrain(b){
+  b.balls--;const save=G<b.saveUntil||PB.fever>G;
+  if(save||b.balls>0){if(save)b.balls++;b.ps='wait';b.el.style.display='none';PB.Q.unshift(b);PB.nextL=Math.min(PB.nextL,G+350);
+    feed(save?`볼 세이브! ${b.name} 다시 발사`:`${b.name} 배수구로! 마지막 공으로 다시 발사`);if(save)pbPop(b,'SAVE','big');return}
+  b.ps='out';b.el.style.display='none';pbFx('splash',Math.max(40,Math.min(400,b.x)),790,1);shake(200,4);feed(`${b.name} 공을 다 잃었습니다. ${fmt(b.sc)}점에서 멈춤`);
+}
+function pbDmd(){
+  const L=PB.lanes.map(v=>v?'●':'○').join(''),D=PB.drop.map(v=>v?'□':'■').join('');
+  $('dmd').innerHTML=`<span>잭팟 <b>${fmt(PB.jack)}</b></span><span>레인 <b>${L}</b></span><span>타깃 <b>${D}</b></span><span>킥백 <b>${PB.kick?'ON':'OFF'}</b></span>`+
+    (PB.Q.length&&racing?`<span>대기 <b>${PB.Q.length}</b></span>`:'')+(PB.fever>G?'<span class="fv">FEVER ×2</span>':PB.hurry?'<span class="fv">LAST ×2</span>':'');
+}
+function pbDraw(){
+  const k=PB.k,top=[...R].sort((a,b)=>b.sc-a.sc).slice(0,3).filter(r=>r.sc>0),few=R.length<=10;
+  for(const r of R){if(r.ps!=='play'&&r.ps!=='hold')continue;
+    r.rot+=(Math.max(-35,Math.min(35,r.vx*.04))-r.rot)*.25;
+    r.el.style.transform=`translate(${pbX(r.x)-r.hw}px,${pbY(r.y)-r.hh}px)`;r.bd.style.transform=`rotate(${r.rot}deg)`;r.el.style.zIndex=3000+(r.y|0);
+    r.el.classList.toggle('tg',few||r.tgU>G||top.includes(r))}
+  PB.fl.forEach((q,i)=>$('pf'+i).setAttribute('transform',`translate(${q.px} ${q.py}) rotate(${(q.s>0?q.a:Math.PI-q.a)*57.2958})`));
+  PB.lanes.forEach((v,i)=>{const e=$('pl'+i);e.classList.toggle('on',!!v);e.classList.toggle('sk',!v&&PB.Q.length>0&&i===PB.skill)});
+  PB.drop.forEach((v,i)=>$('pdt'+i).classList.toggle('dn',!v));
+  $('pkb').classList.toggle('dn',!PB.kick);$('psau').classList.toggle('on',!!PB.sau);
+  for(const id in PB.lit)$(id).classList.toggle('hit',PB.lit[id]>G);
+}
+function pbTick(now){
+  const dt=Math.min(.05,(now-last)/1000)*turbo*(now<slowUntil&&turbo===1?.35:1);last=now;G+=dt*1000;
+  if(!PB.over){
+    PB.skill=(G/400|0)%4;
+    if(PB.Q.length&&G>PB.nextL){pbLaunch(PB.Q.shift());PB.nextL=G+Math.max(220,Math.min(450,9000/R.length))}
+    const n=Math.min(120,Math.max(1,Math.ceil(dt*720))),h=dt/n;for(let i=0;i<n;i++)pbStep(h);
+    // 자동 플리퍼: 공이 플리퍼 위로 내려오면 친다. 공마다 다가올 때 18% 확률로 헛친다
+    PB.fl.forEach((q,i)=>{let want=0;
+      for(const b of R){if(b.ps!=='play')continue;const dx=(b.x-q.px)*q.s,dy=b.y-q.py-dx*Math.tan(FDOWN);
+        if(dx<-12||dx>FLEN+14||dy<-90||dy>30||b.vy<-200){b.fz[i]=0;continue}
+        if(!b.fz[i])b.fz[i]=Math.random()<.18?2:1;if(b.fz[i]===1&&dy>-48)want=1}
+      if(want&&q.up<G&&G>q.cd){q.up=G+170;q.cd=G+300}});
+    for(const b of R){if(b.ps!=='play')continue;
+      if(!(b.x>-50&&b.x<530&&b.y>-50)||isNaN(b.x+b.y)){pbLaunch(b);continue}   // 혹시 판 밖으로 새면 다시 발사
+      if(b.y>PBH+BR&&b.x<420){pbDrain(b);continue}
+      if(b.x>420&&b.y>740&&Math.abs(b.vy)<60){pbLaunch(b);continue}   // 플런저 길로 굴러 내려오면 다시 쏜다
+      b.still=Math.hypot(b.vx,b.vy)<25?b.still+dt:0;if(b.still>1.2){b.still=0;b.vy=-500;b.vx=rnd(-200,200)}}   // 어딘가 끼면 톡 쳐 준다
+    if(PB.sau&&G>PB.sauT){const b=PB.sau;PB.sau=null;PB.sauCd=G+1200;b.sauCd=G+2500;b.ps='play';b.vx=-rnd(250,500);b.vy=-rnd(950,1150);b.y-=BR+14}
+    if(!PB.hurry&&PB.limit-G<8000){PB.hurry=1;eventBanner('라스트 스퍼트!','남은 8초 · 점수 2배','#E5484D');feed('8초 남았습니다! 이제부터 점수 2배')}
+    if(G>PB.limit||R.every(r=>r.ps==='out'))pbEnd();
+  }
+  pbDraw();if(PF)PF.step(Math.min(.05,dt));
+  fieldEl().style.transform=now<shakeUntil?`translate(${rnd(-shakeAmp,shakeAmp)|0}px,${rnd(-shakeAmp,shakeAmp)|0}px)`:'';
+  $('time').textContent=((now-t0)/1000).toFixed(1);$('rest').textContent=Math.max(0,(PB.limit-G)/1000).toFixed(1)+'초';
+  $('left').textContent=R.filter(r=>r.ps!=='out').length;
+  if(now>PB.dmdAt){PB.dmdAt=now+120;pbDmd()}
+  if(now>PB.rkAt){PB.rkAt=now+250;ranks();showWins()}
+  if(racing)raf=requestAnimationFrame(tick);
+}
+function pbEnd(){
+  PB.over=1;const s=[...R].sort((a,b)=>b.sc-a.sc||(b.ps!=='out')-(a.ps!=='out'));s.forEach((r,i)=>{r.done=i+1;r.elim=0});
+  ranks();showWins();pbDmd();eventBanner('게임 종료!','점수 순으로 등수 확정','#2BB673');feed(`게임 종료! 1등 ${s[0].name} ${fmt(s[0].sc)}점`);
+  setTimeout(()=>{cancelAnimationFrame(raf);finish()},1600);
 }
 function startPin(){
   pinning=true;pinEnd=G+5000;const f=fieldEl();f.classList.add('pin');$('pole1').style.visibility='hidden';
@@ -752,24 +928,15 @@ function pinMove(o,dt,drag){
 }
 function pinWorld(dt){
   const P=RS.filter(r=>r.state==='pin'),B=OBJ.filter(o=>o.type==='bump'),fl=OBJ.find(o=>o.type==='pinflag');
-  const vmin=pinMode?(pinRush?560:420):160,kick=pinMode?(pinRush?620:480):200;
-  for(const r of P){pinMove(r,dt,pinMode?.92:.75);r.rot+=r.vx*dt*1.2;if(Math.hypot(r.vx,r.vy)<vmin){const a=rnd(0,6.28);r.vx+=Math.cos(a)*kick;r.vy+=Math.sin(a)*kick}}
-  if(pinMode){   // 가까이 붙으면 서로 밀어내 흩어지게
-    for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],dx=PX(b.x)-PX(a.x),dy=FY(b.y)-FY(a.y),d=Math.hypot(dx,dy)||1;
-      if(d<S*1.4){const f=(S*1.4-d)*9*dt,nx=dx/d,ny=dy/d;a.vx-=nx*f*60;a.vy-=ny*f*60;b.vx+=nx*f*60;b.vy+=ny*f*60}}
-    if(!pinRush&&pinLimit-G<8000){pinRush=true;hurried=true;eventBanner('HURRY UP!','8초 남음 · 더 빨라집니다','#E5484D');feed('8초 남았습니다! 모두 빨라집니다')}}
+  for(const r of P){pinMove(r,dt,.75);r.rot+=r.vx*dt*1.2;if(Math.hypot(r.vx,r.vy)<160){const a=rnd(0,6.28);r.vx+=Math.cos(a)*200;r.vy+=Math.sin(a)*200}}
   for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],dx=PX(b.x)-PX(a.x),dy=FY(b.y)-FY(a.y),d=Math.hypot(dx,dy);
     if(d>0&&d<S*.7){const nx=dx/d,ny=dy/d,va=a.vx*nx+a.vy*ny,vb=b.vx*nx+b.vy*ny;if(va-vb>0){a.vx+=(vb-va)*nx;a.vy+=(vb-va)*ny;b.vx+=(va-vb)*nx;b.vy+=(va-vb)*ny;fx('pow',{x:(a.x+b.x)/2,y:(a.y+b.y)/2})}}}
   for(const o of B)for(const r of P){const dx=PX(r.x)-PX(o.x),dy=FY(r.y)-FY(o.y),d=Math.hypot(dx,dy);
     if(d>0&&d<S*.6){const nx=dx/d,ny=dy/d,vn=r.vx*nx+r.vy*ny;if(vn<0){r.vx-=2.4*vn*nx;r.vy-=2.4*vn*ny;fx('spark',o,1);shake(90,2);if(Math.random()<.3)feed(`${r.name} 범퍼에 튕겼습니다!`)}}}
   if(fl){pinMove(fl,dt,.9);if(Math.hypot(fl.vx,fl.vy)<80){fl.vx=rnd(-140,140);fl.vy=rnd(-140,140)}putObj(fl);
-    let win=(pinMode?G>(fl.readyAt||0):G>pinEnd-3500)?P.find(r=>pinMode?near(r,fl,.45,.38):near(r,fl,.5,.45)):null;   // 처음 1.5초는 튕기는 구경(핀볼 모드는 바로)
+    let win=G>pinEnd-3500?P.find(r=>near(r,fl,.5,.45)):null;   // 처음 1.5초는 튕기는 구경
     if(!win&&G>pinEnd)win=P.sort((a,b)=>Math.hypot(PX(a.x)-PX(fl.x),FY(a.y)-FY(fl.y))-Math.hypot(PX(b.x)-PX(fl.x),FY(b.y)-FY(fl.y)))[0];
-    if(win){if(pinMode)pinAward(win,fl);else endPin(win,G>pinEnd)}}
-  if(pinMode&&G>drainOn&&R.filter(r=>r.state==='pin').length>4-pinK)   // 남은 깃발 수보다 많을 때만 구멍이 삼킨다
-    for(const d of OBJ.filter(o=>o.type==='drain'&&o.live))for(const r of RS)if(r.state==='pin'&&G>(r.drainCd||0)&&near(r,d,.35,.3)){r.drainCd=G+700;
-      if(Math.random()<(OBJ.some(o=>o.type==='pinflag'&&o.live)?(pinRush?.8:.35):1))pinDrain(r);else{   // 깃발이 다 나간 뒤엔 잘 빠진다
-        r.vx*=-1.2;r.vy*=-1.2;fx('splash',r);if(Math.random()<.3)feed(`${r.name} 구멍 가장자리에서 튕겨 나왔습니다`)}}
+    if(win)endPin(win,G>pinEnd)}
 }
 function endPin(w,late){
   pinning=false;fieldEl().classList.remove('pin');
@@ -891,6 +1058,8 @@ function ceremony(){
 }
 function stopCeremony(){cancelAnimationFrame(cer);const cv=$('cfx');if(cv)cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}
 function ranks(){
+  if(PB){const s=[...R].sort((a,b)=>b.sc-a.sc);   // 핀볼: 점수 순, 공을 다 잃은 펭귄은 흐리게
+    $('ranklist').innerHTML=s.map((r,i)=>`<li class="${r.ps==='out'?'out':''}"><b>${i+1}</b>${svg(r.look.k,'',r.look.c)}<span class="nm">${esc(r.name)}</span><i>${fmt(r.sc)}</i></li>`).join('');return}
   const key=r=>r.done?r.done:r.elim?1000-r.elim:100-r.x;   // 완주 → 달리는 중 → 탈락(늦게 탈락할수록 위)
   const s=[...R].sort((a,b)=>key(a)-key(b));
   $('ranklist').innerHTML=s.map((r,i)=>`<li class="${r.elim?'out':''}"><b>${r.elim?'X':r.done||i+1}</b>${svg(r.look.k,'',r.look.c)}${esc(r.name)}</li>`).join('');
@@ -898,14 +1067,14 @@ function ranks(){
 
 // 출발 순간 초기화(카운트다운 뒤). 시험용 모의 경주도 이 함수로 시작한다
 function launch(t){
-t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=2500;nextShift=3200;pinMode=$('gmode').value==='pin';
+t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=2500;nextShift=3200;pinMode=!!PB;
     R.forEach(r=>{r.tv=r.v=rnd(.04,.14);r.steer=rnd(300,900);setState(r,'walk',0)});
     swimAt=Math.random()<SWIM_P?rnd(1500,3500):Infinity;swimEnd=0;fleeing=false;fleeAt=Math.random()<FLEE_P?rnd(2200,3600):Infinity;pinning=false;pinAt=Math.random()<PIN_P?rnd(1200,2400):Infinity;tetris=false;TP=[];TCOL=[];tetAt=Math.random()<TET_P?rnd(1800,3400):Infinity;giantAt=Math.random()<GIANT_P?rnd(2000,6000):Infinity;dropAt=Math.random()<DROP_P?rnd(2500,5500):Infinity;
     if(pinMode){swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=Infinity;nextShift=nextFocus=Infinity;hurried=true}
     if(!pinMode&&Math.random()<ROCKET_P){const rk=pick(R);rk.rocketWin=1;setState(rk,'rocket',1e9);rk.el.classList.add('rocket');
       R.forEach(o=>{if(o!==rk){setState(o,'down',1200);fx('dust',o,1)}});fx('pow',rk,1);shake(600,9);setTimeout(()=>slow(900),20);setTimeout(()=>feed(`${rk.name} 로켓 발사! 폭풍에 나머지가 모두 엎어졌습니다`)||eventBanner('로켓 발사!',`${rk.name} 혼자 날아갑니다`,'#E5484D'),50)}
     feed('출발! 1·2·3등 깃발을 먼저 뽑는 펭귄은 누구일까요');
-    if(pinMode)startPinMode();
+    if(pinMode)pbStart();
 }
 function start(){
   if(racing||names.length<2)return;stopCeremony();build();racing=true;renderChips();
@@ -923,12 +1092,12 @@ function finish(){
   const n=R.length,k=+$('topn').value,back=$('mode').value==='back';
   const sorted=[...R].sort((a,b)=>a.done-b.done),win=r=>back?r.done>n-k:r.done<=k;
   $('rh').textContent='시상식 · 당첨: '+sorted.filter(win).map(r=>r.name).join(', ');
-  $('rs').textContent=(back?'뒤에서 ':'앞에서 ')+k+'명 · 전체 '+n+'명 도착 순서';
+  $('rs').textContent=(back?'뒤에서 ':'앞에서 ')+k+'명 · 전체 '+n+'명 '+(PB?'점수 순서':'도착 순서');
   const top=sorted.slice(0,3);
   $('podium').innerHTML=[1,0,2].filter(i=>top[i]).map(i=>{const r=top[i];return `<div class="pd p${i+1}${win(r)?' win':''}"><div class="who">${svg('flag'+(i+1),'pf')}${svg(r.look.k,'pc',r.look.c)}<span class="pn">${esc(r.name)}</span></div><div class="blk"><b>${i+1}</b></div></div>`}).join('');
   const fans=sorted.slice(3).map(r=>svg(r.look.k,'',r.look.c));while(fans.length<12)fans.push(svg('아델리펭귄','',pick(COLORS)));
   $('crowd').innerHTML=fans.join('');
-  $('rl').innerHTML=sorted.slice(3).map(r=>`<li class="${win(r)?'win':''}"><b>${r.done}등</b>${svg(r.look.k,'',r.look.c)}<span>${esc(r.name)}</span></li>`).join('');
+  $('rl').innerHTML=sorted.slice(3).map(r=>`<li class="${win(r)?'win':''}"><b>${r.done}등</b>${svg(r.look.k,'',r.look.c)}<span>${esc(r.name)}${PB?' · '+fmt(r.sc)+'점':''}</span></li>`).join('');
   $('result').hidden=false;$('result').scrollIntoView({behavior:'smooth',block:'nearest'});if(PF){PF.clear();PF.step(0)}fieldEl().style.transform='';ceremony();
 }
 
@@ -939,7 +1108,8 @@ $('copy').onclick=e=>{
   navigator.clipboard.writeText(txt).then(()=>b.textContent='복사했습니다').catch(()=>b.textContent='복사가 막혀 있습니다');
   setTimeout(()=>b.textContent='순서 복사',1500);
 };
-addEventListener('resize',()=>{FW=fieldEl().clientWidth||FW;R.forEach(place);OBJ.forEach(o=>o.type==='pond'?placePond(o):o.type==='rift'||o.type==='floe'?placeBand(o):putObj(o))});
+$('gmode').onchange=()=>{if(!racing)build()};
+addEventListener('resize',()=>{if(PB){if(!racing&&fieldEl().clientWidth!==FW)build();return}FW=fieldEl().clientWidth||FW;R.forEach(place);OBJ.forEach(o=>o.type==='pond'?placePond(o):o.type==='rift'||o.type==='floe'?placeBand(o):putObj(o))});
 $('logo').innerHTML=svg('아델리펭귄','',COLORS[0]);sky();renderChips();
 build();
 </script>
