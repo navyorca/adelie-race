@@ -243,14 +243,14 @@ button{font:inherit;cursor:pointer}
 .result li.win b{color:var(--pickInk)}
 .row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 /* 261025 핀볼 모드: 세로 핀볼대(판은 SVG, 펭귄이 공). 위 띠는 핀볼 점수판(DMD)처럼 */
-.field.pinball{background:#06103A;background-image:none}
+.field.pinball{background:#0B2545;background-image:none}
 .field.pinball::before,.field.pinball::after{content:none}
 .pbt{position:absolute;display:block}
 .pbt text{font-family:var(--f)}
 .pbt .on{fill:#FFE58A}.pbt .sk{fill:#FF7AA2;animation:blink .2s steps(1) infinite}
-.pbt .hit circle,.pbt polygon.hit{fill:#FFFFFF}
+.pbt .hit polygon,.pbt polygon.hit{fill:#FFFFFF}.pbt #psau.on{fill:#FF6B4A}
 .pbt .dn{opacity:.18}
-.dmd{position:absolute;top:8px;display:flex;flex-wrap:wrap;gap:2px 16px;justify-content:center;align-items:center;min-height:40px;padding:4px 10px;background:#000000;border:3px solid #FF9F1C;color:#FF9F1C;font-size:18px}
+.dmd{position:absolute;top:8px;display:flex;flex-wrap:wrap;gap:2px 16px;justify-content:center;align-items:center;min-height:40px;padding:4px 10px;background:#000000;border:3px solid #5CE1C6;color:#5CE1C6;font-size:18px}
 .dmd b{font-family:var(--dot);font-weight:400;color:#FFE58A}
 .dmd .fv{color:#000000;background:#FF7AA2;padding:0 6px;animation:blink .3s steps(1) infinite}
 .pbp{position:absolute;left:0;top:0;z-index:6000;pointer-events:none;font-family:var(--dot);font-size:18px;color:#FFE58A;text-shadow:2px 2px 0 #0A1A5C;white-space:nowrap;animation:pbp .8s steps(8) forwards}
@@ -259,10 +259,10 @@ button{font:inherit;cursor:pointer}
 .field.pinball .runner .tag{display:none}
 .field.pinball .runner.tg .tag{display:block}
 .field.pinball .runner .sp{animation:none}
-.pbv{position:absolute;top:0;right:0;bottom:0;overflow:hidden;background:#06103A}
+.pbv{position:absolute;top:0;right:0;bottom:0;overflow:hidden;background:#0B2545}
 .pbw{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 .pbv .dmd{left:8px;right:8px;z-index:7000}
-.pbm{position:absolute;left:8px;top:8px;background:#06103A;border:3px solid #FF9F1C;padding:4px;color:#FF9F1C;font-size:14px;z-index:7000}
+.pbm{position:absolute;left:8px;top:8px;background:#0B2545;border:3px solid #5CE1C6;padding:4px;color:#5CE1C6;font-size:14px;z-index:7000}
 .pbm svg,.pbm canvas{display:block}.pbm .pbt{position:static}.pbm canvas{position:absolute;left:4px;bottom:4px}
 @media(max-width:640px){.pbm{top:auto;bottom:8px;opacity:.9;font-size:0;padding:2px;border-width:2px}.pbm canvas{left:2px;bottom:2px}}
 .game.pinm .prog{display:none}
@@ -763,23 +763,31 @@ function pbWalls(){
   W.push({x1:88,y1:585,x2:126,y2:666,t:'sl',i:0},{x1:352,y1:585,x2:314,y2:666,t:'sl',i:1});   // 슬링샷 튕김면
   return W;
 }
+// 261025 남극 테마(네오 "컬러랑 오브제 남극에 있을법한걸로"): 범퍼 = 빙산, 슬링샷 = 눈더미, 드롭 타깃 = 아델리 둥지 조약돌, 구멍 = 크릴 숨구멍, 배수구 = 밤바다
 function pbSvg(tw,th){
-  const E=[],ln=s=>`<line x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="#00007F" stroke-width="6" stroke-linecap="square"/>`,tx=(x,y,t,c)=>`<text x="${x}" y="${y}" fill="${c}" font-size="14" text-anchor="middle">${t}</text>`;
-  E.push('<rect width="480" height="800" fill="#06103A"/><polygon points="20,800 20,120 45,62 100,30 380,30 432,52 460,105 460,800" fill="#EAF3FF"/>');
-  for(let y=140;y<800;y+=40)E.push(`<rect x="24" y="${y}" width="392" height="2" fill="#D6E6FA"/>`);   // 빙판 결
-  E.push('<rect x="22" y="190" width="34" height="250" fill="#D7C8FF"/><rect x="386" y="195" width="34" height="245" fill="#BFD8FF"/><rect x="422" y="175" width="36" height="623" fill="#CFE0F5"/>');
-  for(let y=236;y<420;y+=46)E.push(`<polygon points="38,${y} 28,${y+14} 48,${y+14}" fill="#7C5CFF"/><polygon points="402,${y} 392,${y+14} 412,${y+14}" fill="#2F6BFF"/>`);
-  E.push(tx(38,182,'램프','#7C5CFF'),tx(402,188,'오빗','#2F6BFF'),tx(310,424,'크릴','#E5484D'),tx(190,352,'타깃','#7C5CFF'));
-  E.push('<rect x="22" y="690" width="36" height="108" fill="#FFD9D9"/><rect x="382" y="690" width="36" height="108" fill="#FFD9D9"/>');   // 아웃레인(빠지면 배수구)
-  E.push('<rect x="60" y="752" width="320" height="48" fill="#0A1A5C"/><rect x="430" y="776" width="20" height="20" fill="#9AA3B5"/><rect x="430" y="780" width="20" height="2" fill="#5A6488"/><rect x="430" y="786" width="20" height="2" fill="#5A6488"/>');
-  E.push('<rect id="pkb" x="28" y="660" width="24" height="10" fill="#2BB673"/>');
-  PLANE.forEach((x,i)=>E.push(`<rect id="pl${i}" x="${x-9}" y="72" width="18" height="18" fill="#FFFFFF" stroke="#00007F" stroke-width="3"/>`));
-  E.push('<polygon id="psl0" points="88,585 88,640 126,666" fill="#FF9F1C"/><polygon id="psl1" points="352,585 352,640 314,666" fill="#FF9F1C"/>');
-  PBUMP.forEach(([x,y],i)=>E.push(`<g id="pbm${i}"><circle cx="${x}" cy="${y}" r="24" fill="#E5484D" stroke="#00007F" stroke-width="4"/><circle cx="${x}" cy="${y}" r="11" fill="#FFE58A"/></g>`));
-  PDROP.forEach((x,i)=>E.push(`<rect id="pdt${i}" x="${x-15}" y="362" width="30" height="12" fill="#C77DFF" stroke="#00007F" stroke-width="3"/>`));
-  E.push(`<circle id="psau" cx="${PSAU[0]}" cy="${PSAU[1]}" r="17" fill="#0A1A5C" stroke="#FF7AA2" stroke-width="4"/><rect x="302" y="380" width="4" height="4" fill="#FF7AA2"/><rect x="312" y="386" width="4" height="4" fill="#FF7AA2"/>`);
+  const E=[],ln=s=>`<line x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="#1B4F7A" stroke-width="6" stroke-linecap="square"/>`,tx=(x,y,t,c)=>`<text x="${x}" y="${y}" fill="${c}" font-size="14" text-anchor="middle">${t}</text>`;
+  E.push('<rect width="480" height="800" fill="#0B2545"/>');
+  for(const [y,c] of [[4,'#2BD9A8'],[12,'#5CE1C6'],[20,'#C77DFF']])E.push(`<rect x="0" y="${y}" width="480" height="4" fill="${c}" opacity=".45"/>`);   // 바깥 하늘 오로라
+  E.push('<polygon points="20,800 20,120 45,62 100,30 380,30 432,52 460,105 460,800" fill="#E6F4FB"/>');
+  for(const p of ['24,250 70,262 96,300 150,306','300,470 340,500 330,540 372,560','150,520 190,545 240,540','70,140 110,160 112,185','250,610 280,600 300,620'])
+    E.push(`<polyline points="${p}" fill="none" stroke="#BFE0F0" stroke-width="2"/>`);   // 빙판 금
+  for(const [x,y] of [[70,120],[350,150],[120,470],[260,440],[200,600],[330,690],[60,520],[300,250]])E.push(`<rect x="${x}" y="${y}" width="4" height="4" fill="#FFFFFF"/><rect x="${x-4}" y="${y}" width="2" height="4" fill="#CFE8F5"/>`);   // 눈 반짝
+  E.push('<rect x="22" y="190" width="34" height="250" fill="#BFF2E6"/><rect x="386" y="195" width="34" height="245" fill="#BCDDF2"/><rect x="422" y="175" width="36" height="623" fill="#D2E8F5"/>');
+  for(let y=236;y<420;y+=46)E.push(`<polygon points="38,${y} 28,${y+14} 48,${y+14}" fill="#20B39A"/><polygon points="402,${y} 392,${y+14} 412,${y+14}" fill="#2F7FD0"/>`);
+  E.push(tx(44,182,'오로라','#129C86'),tx(402,188,'해류','#2F7FD0'),tx(310,424,'크릴','#FF6B4A'),tx(190,352,'조약돌','#5B6475'));
+  E.push('<rect x="22" y="690" width="36" height="108" fill="#2A6FA8"/><rect x="382" y="690" width="36" height="108" fill="#2A6FA8"/>');   // 아웃레인(바닷물로 빠짐)
+  E.push('<rect x="60" y="752" width="320" height="48" fill="#123E6B"/><rect x="430" y="776" width="20" height="20" fill="#9AA3B5"/><rect x="430" y="780" width="20" height="2" fill="#5A6488"/><rect x="430" y="786" width="20" height="2" fill="#5A6488"/>');
+  for(const x of [26,70,110,150,190,230,270,310,350,386])E.push(`<rect x="${x}" y="${x<60||x>380?702:760}" width="14" height="3" fill="#8FC7EE"/>`);   // 물결
+  for(const [x,y,f] of [[110,780,1],[250,786,-1]])E.push(`<g transform="translate(${x} ${y}) scale(${f} 1)" fill="#5CA8E0"><rect x="0" y="-3" width="12" height="6"/><polygon points="12,0 18,-5 18,5"/></g>`);   // 바닷속 물고기
+  E.push('<rect id="pkb" x="28" y="660" width="24" height="10" fill="#20B39A"/>');
+  PLANE.forEach((x,i)=>E.push(`<rect id="pl${i}" x="${x-9}" y="72" width="18" height="18" fill="#FFFFFF" stroke="#1B4F7A" stroke-width="3"/>`));
+  E.push('<polygon id="psl0" points="88,585 88,640 126,666" fill="#A9DDF3"/><polygon id="psl1" points="352,585 352,640 314,666" fill="#A9DDF3"/>');
+  PBUMP.forEach(([x,y],i)=>E.push(`<g id="pbm${i}"><polygon points="${x-14},${y-23} ${x+12},${y-25} ${x+25},${y-6} ${x+21},${y+17} ${x+4},${y+25} ${x-18},${y+20} ${x-25},${y+2}" fill="#9FE3F5" stroke="#1B4F7A" stroke-width="4"/>`+
+    `<polygon points="${x-14},${y-23} ${x+12},${y-25} ${x+4},${y-8} ${x-12},${y-6}" fill="#FFFFFF"/><polygon points="${x+4},${y+25} ${x-18},${y+20} ${x-4},${y+8}" fill="#5FC0E4"/></g>`));
+  PDROP.forEach((x,i)=>E.push(`<rect id="pdt${i}" x="${x-15}" y="362" width="30" height="12" rx="6" fill="#8A93A6" stroke="#3D4558" stroke-width="3"/>`));
+  E.push(`<circle id="psau" cx="${PSAU[0]}" cy="${PSAU[1]}" r="17" fill="#123E6B" stroke="#FF6B4A" stroke-width="4"/><rect x="302" y="380" width="5" height="3" fill="#FF8A6E"/><rect x="312" y="387" width="5" height="3" fill="#FF8A6E"/><rect x="306" y="392" width="4" height="3" fill="#FFB3A0"/>`);
   for(const s of PB.W)E.push(ln(s));
-  PB.fl.forEach((q,i)=>E.push(`<g id="pf${i}"><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#00007F" stroke-width="18" stroke-linecap="round"/><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#E5484D" stroke-width="10" stroke-linecap="round"/></g>`));
+  PB.fl.forEach((q,i)=>E.push(`<g id="pf${i}"><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#0B1020" stroke-width="18" stroke-linecap="round"/><line x1="0" y1="0" x2="${FLEN}" y2="0" stroke="#3A4566" stroke-width="10" stroke-linecap="round"/><line x1="6" y1="3" x2="${FLEN-8}" y2="3" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/></g>`));   // 플리퍼 = 펭귄 지느러미
   return `<svg class="pbt" viewBox="0 0 ${PBW} ${PBH}" style="width:${tw}px;height:${th}px" aria-hidden="true">${E.join('')}</svg>`;
 }
 // 판 그리기 + 펭귄을 발사 대기열에 세운다(출발 전 미리보기도 이 화면)
@@ -805,7 +813,7 @@ function pbBuild(){
   PB.Q=shuffle(R.slice());
   const cv=$('pfx');cv.width=Math.ceil(tw);cv.height=Math.ceil(th);PF=PFX(cv);
   $('rest').previousElementSibling.textContent='남은 시간';$('rest').textContent=(PB_LIMIT/1000).toFixed(1)+'초';
-  $('feed').innerHTML='<p>핀볼대에 모였습니다. 범퍼·레인·타깃·크릴 구멍으로 점수를 모으세요.</p>';pbDmd();ranks();pbCam(1);
+  $('feed').innerHTML='<p>핀볼대에 모였습니다. 빙산·레인·조약돌·크릴 구멍으로 점수를 모으세요.</p>';pbDmd();ranks();pbCam(1);
 }
 function pbStart(){
   PB.nextL=G+300;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
@@ -852,7 +860,7 @@ function pbStep(h){
     // 램프·오빗: 3.5초 안에 다시 타면 콤보로 점수가 커진다
     const orb=b.y>280&&b.y<320&&(b.x<56||b.x>384&&b.x<420);
     if(orb&&G>b.orbCd){b.orbCd=G+900;b.combo=G-b.lastShot<3500?b.combo+1:1;b.lastShot=G;pbScore(b,300*b.combo);
-      if(b.combo>=2){pbPop(b,b.combo+'콤보!','big');feed(`${b.name} ${b.x<56?'램프':'오빗'} ${b.combo}연속 콤보!`)}}
+      if(b.combo>=2){pbPop(b,b.combo+'콤보!','big');feed(`${b.name} ${b.x<56?'오로라':'해류'} ${b.combo}연속 콤보!`)}}
     // 킥백: 왼쪽 아웃레인에 불이 켜져 있으면 한 번 되쏜다
     if(PB.kick&&b.x<60&&b.y>672&&b.vy>0){PB.kick=0;b.vy=-1500;b.vx=rnd(20,90);pbFx('pow',b.x,b.y);shake(160,3);feed(`킥백! ${b.name} 아웃레인에서 튕겨 올라옵니다`)}
   }
@@ -863,7 +871,7 @@ function pbStep(h){
 function pbTarget(b,i){PB.drop[i]=0;pbScore(b,250);pbFx('pow',PDROP[i],368);
   if(PB.drop.some(Boolean))return;
   pbScore(b,1000);pbPop(b,'미션 완료!','big');b.tgU=G+2500;PB.fever=G+7000;PB.kick=1;slow(500);
-  eventBanner('FEVER!',`${b.name} 타깃 정리 · 7초간 점수 2배`,'#FF7AA2');feed(`${b.name} 드롭 타깃 3개 정리! 피버 타임, 킥백 다시 켜짐`);
+  eventBanner('FEVER!',`${b.name} 둥지 조약돌 다 모음 · 7초간 점수 2배`,'#FF7AA2');feed(`${b.name} 조약돌 3개 모아 둥지 완성! 피버 타임, 킥백 다시 켜짐`);
   setTimeout(()=>{if(PB)PB.drop=[1,1,1]},1500);
 }
 function pbJackpot(b){PB.sau=b;PB.zU=G+1400;PB.sauT=G+900;b.ps='hold';b.x=PSAU[0];b.y=PSAU[1];b.vx=b.vy=0;
@@ -877,7 +885,7 @@ function pbDrain(b){
 }
 function pbDmd(){
   const L=PB.lanes.map(v=>v?'●':'○').join(''),D=PB.drop.map(v=>v?'□':'■').join('');
-  $('dmd').innerHTML=`<span>잭팟 <b>${fmt(PB.jack)}</b></span><span>레인 <b>${L}</b></span><span>타깃 <b>${D}</b></span><span>킥백 <b>${PB.kick?'ON':'OFF'}</b></span>`+
+  $('dmd').innerHTML=`<span>잭팟 <b>${fmt(PB.jack)}</b></span><span>레인 <b>${L}</b></span><span>조약돌 <b>${D}</b></span><span>킥백 <b>${PB.kick?'ON':'OFF'}</b></span>`+
     (PB.Q.length&&racing?`<span>대기 <b>${PB.Q.length}</b></span>`:'')+(PB.fever>G?'<span class="fv">FEVER ×2</span>':PB.hurry?'<span class="fv">LAST ×2</span>':'');
 }
 // 카메라: 큰 사건(잭팟·콤보·미션) 펭귄 → 따라가던 펭귄(2.5초 고정) → 점수 1등 순. 진행 방향을 조금 앞서 보고, 사건 때는 살짝 당겨 찍는다
@@ -896,7 +904,7 @@ function pbCam(snap){
   const c=PB.mc,m=PB.mk;c.clearRect(0,0,c.canvas.width,c.canvas.height);const top1=[...R].sort((p,q)=>q.sc-p.sc)[0];
   for(const r of R){if(r.ps!=='play'&&r.ps!=='hold')continue;c.fillStyle=r.dot;c.fillRect(r.x*m-3,r.y*m-3,6,6);
     if(r===top1&&r.sc>0){c.strokeStyle='#FFE58A';c.lineWidth=2;c.strokeRect(r.x*m-5,r.y*m-5,10,10)}}
-  c.strokeStyle='#FF9F1C';c.lineWidth=2;c.strokeRect(Math.max(1,PB.X/k*m),Math.max(1,PB.Y/k*m),Math.min(c.canvas.width-2,vw/k*m),Math.min(c.canvas.height-2,vh/k*m));
+  c.strokeStyle='#5CE1C6';c.lineWidth=2;c.strokeRect(Math.max(1,PB.X/k*m),Math.max(1,PB.Y/k*m),Math.min(c.canvas.width-2,vw/k*m),Math.min(c.canvas.height-2,vh/k*m));
 }
 function pbDraw(){
   const k=PB.k,top=[...R].sort((a,b)=>b.sc-a.sc).slice(0,3).filter(r=>r.sc>0),few=R.length<=10;
@@ -1006,7 +1014,7 @@ function eventBanner(title,sub,color){
   const a=document.querySelector('.arena'),f=document.createElement('div'),b=document.createElement('div');
   f.className='evf';b.className='evb';b.style.setProperty('--ec',color);b.innerHTML=`<b>${esc(title)}</b><small>${esc(sub)}</small>`;
   a.append(f,b);setTimeout(()=>{f.remove();b.remove()},1550);shake(300,5);
-  for(let i=0;i<8;i++)setTimeout(()=>fx(pick(['confetti','spark','pow']),{x:rnd(.05,.9),y:rnd(.05,.95)},1),i*110);
+  for(let i=0;i<8;i++)setTimeout(()=>PB?pbFx(pick(['confetti','spark','pow']),PB.cx+rnd(-160,160),PB.cy+rnd(-220,220),1):fx(pick(['confetti','spark','pow']),{x:rnd(.05,.9),y:rnd(.05,.95)},1),i*110);   // 핀볼은 카메라가 보는 곳에 터뜨림
 }
 // 깃발 뺏기 연출: 알림 띠 → 깃발이 포물선으로 날아가 새 주인에게 → 빼앗긴 쪽은 흔들리며 X, 빼앗은 쪽 이름표 노랗게
 // 결승 도착: 결승선 번쩍임, 머리 위로 'N등 GOAL!' 글자가 튀어 오르고, 1~3등은 금·은·동 색으로 크게
