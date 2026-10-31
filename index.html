@@ -122,6 +122,12 @@ button{font:inherit;cursor:pointer}
 .field.shift{filter:brightness(1.35) saturate(1.4)}
 .field::before,.field::after{content:"";position:absolute;left:0;right:0;height:4px;background:repeating-linear-gradient(90deg,#FFFFFF 0 6px,transparent 6px 14px)}
 .field::before{top:5px}.field::after{bottom:5px}
+/* 261031 네오 "맵이 고정된 게 아니라 경주처럼 쭉쭉 이동하는 느낌": 빙판을 화면의 TRACK_L배로 길게 깔고 카메라가 선두를 따라간다 */
+.world{position:absolute;left:0;top:0;height:100%;will-change:transform}
+.km{position:absolute;top:14px;bottom:14px;width:0;border-left:2px dashed #BFD6F5;z-index:2;pointer-events:none}
+.km b{position:absolute;top:6px;left:4px;font-family:var(--dot);font-weight:400;font-size:18px;color:#00007F;background:#FFFFFF;padding:0 4px;white-space:nowrap}
+.km.end{border-left-color:#E5484D}.km.end b{background:#E5484D;color:#FFFFFF}
+.behind{position:absolute;left:8px;bottom:22px;z-index:7000;font-family:var(--dot);font-size:18px;color:#FFFFFF;background:#0A1A5C;border:2px solid #FFFFFF;padding:2px 8px;pointer-events:none}
 .goal{position:absolute;top:14px;bottom:14px;right:0;width:12px;background:repeating-conic-gradient(#00007F 0 25%,#FFFFFF 0 50%) 0 0/12px 12px}
 .goal.hit{animation:goalhit .45s steps(3)}
 @keyframes goalhit{0%,100%{filter:none;width:12px}50%{filter:brightness(1.8) hue-rotate(180deg);width:24px}}
@@ -256,6 +262,9 @@ button{font:inherit;cursor:pointer}
 .pbp{position:absolute;left:0;top:0;z-index:6000;pointer-events:none;font-family:var(--dot);font-size:18px;color:#FFE58A;text-shadow:2px 2px 0 #0A1A5C;white-space:nowrap;animation:pbp .8s steps(8) forwards}
 .pbp.big{font-size:22px;color:#FFFFFF;background:#E5484D;border:2px solid #FFFFFF;padding:0 6px;text-shadow:none}
 @keyframes pbp{from{transform:translate(var(--x),var(--y))}to{transform:translate(var(--x),calc(var(--y) - 40px));opacity:0}}
+.pbg{position:absolute;z-index:6000;pointer-events:none;transform:translateX(-50%);font-family:var(--dot);font-size:18px;color:#0A1A5C;background:#FFE58A;border:2px solid #0A1A5C;padding:0 6px;white-space:nowrap}
+.pbg.r1{background:#FFD23F}.pbg.r2{background:#E3E8F0}.pbg.r3{background:#F2B38A}
+.dmd .bar{display:inline-block;width:60px;height:10px;border:2px solid #5CE1C6;vertical-align:middle}.dmd .bar i{display:block;height:100%;background:#5CE1C6}
 .field.pinball .runner .tag{display:none}
 .field.pinball .runner.tg .tag{display:block}
 .field.pinball .runner .sp{animation:none}
@@ -265,9 +274,6 @@ button{font:inherit;cursor:pointer}
 .pbsnow{position:absolute;inset:0;pointer-events:none;z-index:6500;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect x='10' y='14' width='4' height='4' fill='%23fff'/%3E%3Crect x='70' y='40' width='3' height='3' fill='%23fff'/%3E%3Crect x='40' y='90' width='4' height='4' fill='%23fff' opacity='.8'/%3E%3Crect x='100' y='76' width='3' height='3' fill='%23fff' opacity='.7'/%3E%3C/svg%3E");animation:pbsnow 6s linear infinite;opacity:.75}
 .pbsnow.b{background-size:200px 200px;animation-duration:11s;opacity:.45}
 @keyframes pbsnow{from{background-position:0 0}to{background-position:-120px 240px}}
-.pbm{position:absolute;left:8px;top:8px;background:#0B2545;border:3px solid #5CE1C6;padding:4px;color:#5CE1C6;font-size:14px;z-index:7000}
-.pbm svg,.pbm canvas{display:block}.pbm .pbt{position:static}.pbm canvas{position:absolute;left:4px;bottom:4px}
-@media(max-width:640px){.pbm{top:auto;bottom:8px;opacity:.9;font-size:0;padding:2px;border-width:2px}.pbm canvas{left:2px;bottom:2px}}
 .game.pinm .prog{display:none}
 .game.pinm .arena{background-color:#9ED9F2;background-image:linear-gradient(#5BA9DA 2px,transparent 2px),linear-gradient(90deg,#5BA9DA 2px,transparent 2px);background-size:24px 12px}
 .game.pinm .rank{background:#081633;border:3px solid #5CE1C6}.game.pinm .rank h3{color:#5CE1C6}
@@ -396,8 +402,10 @@ let TCOL=[];
 let TET_P=.36,tetAt=Infinity,tetris=false,tetEnd=0,tetNext=0,TP=[];   // 테트리스 36%
 let ROCKET_P=.40,SWIM_P=.38,FLEE_P=.45,swimAt=Infinity,swimEnd=0,fleeAt=Infinity,fleeing=false; // 로켓 40%, 얼음 깨짐 38%, 깃발 도망 45% (261002 +5%p → +10%p → +20%p)
 let tiltUntil=0,tiltDir=1;
+const TRACK_L=2.5;let VW=600,CAM=0;   // 화면 폭 VW, 빙판 전체 폭 FW = VW×TRACK_L
 let nextShift=0,FW=600,FH=300,G=0,OBJ=[],FEED=[],nextFocus=0,flagsLeft=[1,2,3];
 const fieldEl=()=>$('field');
+const worldEl=()=>fieldEl().querySelector('.world')||fieldEl();
 const PX=x=>8+x*(FW-8-S-14);                    // 왼쪽 위치(px)
 const FY=y=>EDGE+S+30+y*(FH-2*EDGE-S-40);    // 위쪽은 캐릭터 키와 말풍선 자리            // 발 위치(px)
 const near=(a,b,kx=.7,ky=.5)=>Math.abs(PX(a.x)-PX(b.x))<S*kx&&Math.abs(FY(a.y)-FY(b.y))<S*ky;
@@ -405,27 +413,28 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const pick=a=>a[Math.random()*a.length|0];
 const jo=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return w+(c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?a:b)};
 function feed(msg){FEED.unshift(msg);FEED.length=Math.min(FEED.length,3);$('feed').innerHTML=FEED.map(m=>`<p>${esc(m)}</p>`).join('')}
-function mk(html,cls,w){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(w)d.firstChild.style.width=w+'px';fieldEl().appendChild(d);return d}
+function mk(html,cls,w){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(w)d.firstChild.style.width=w+'px';worldEl().appendChild(d);return d}
 const dotW=k=>+SP[k].vb.split(' ')[2]*UNIT;
 function putObj(o){o.el.style.transform=`translate(${PX(o.x)+S/2-o.w/2}px,${FY(o.y)-o.h}px)`;o.el.style.zIndex=Math.round(FY(o.y))}
 
 function build(){
   const n=names.length,f=fieldEl();
   PB=null;f.classList.remove('pinball');document.querySelector('.game').classList.remove('pinm');$('rest').previousElementSibling.textContent='REST';
-  f.innerHTML='<div class="goal"></div><canvas class="pfx" id="pfx"></canvas>';
-  FW=f.clientWidth||600;S=Math.round(Math.max(72,Math.min(104,FW*.11)));UNIT=S/38;   // 261007 펭귄 더 크게(폰 폭 약 330px에서도 72px)
-  FH=Math.max(420,Math.min(900,180+n*S*.75));f.style.height=FH+'px';FW=f.clientWidth||600;
+  f.innerHTML='<div class="world"><div class="goal"></div><canvas class="pfx" id="pfx"></canvas></div><div class="behind" id="behind" hidden></div>';
+  VW=f.clientWidth||600;S=Math.round(Math.max(72,Math.min(104,VW*.11)));UNIT=S/38;   // 261007 펭귄 더 크게(폰 폭 약 330px에서도 72px)
+  FH=Math.max(420,Math.min(900,180+n*S*.75));f.style.height=FH+'px';VW=f.clientWidth||600;FW=Math.round(VW*TRACK_L);worldEl().style.width=FW+'px';CAM=0;
+  for(let m=900;m>=100;m-=100){const k=document.createElement('div');k.className='km'+(m===100?' end':'');k.dataset.x=1-m/1000;k.style.left=(PX(1-m/1000)+S/2)+'px';k.innerHTML=`<b>${m===100?'결승 100m':m+'m'}</b>`;worldEl().appendChild(k)}
   // 결승선 깃발 1·2·3
   flagsLeft=[1,2,3];
   [1,2,3].forEach((k,i)=>{const p=document.createElement('div');p.className='pole';p.id='pole'+k;
-    p.style.top=(EDGE+8+i*((FH-2*EDGE-40)/2))+'px';p.innerHTML=svg('flag'+k,'')+`<b>${k}</b>`;f.appendChild(p)});
+    p.style.top=(EDGE+8+i*((FH-2*EDGE-40)/2))+'px';p.innerHTML=svg('flag'+k,'')+`<b>${k}</b>`;worldEl().appendChild(p)});
   const order=shuffle(names.slice());const cs=cast(order);   // 경주 내부 순서도 명단 순서와 무관하게 섞는다OBJ=[];FEED=[];$('feed').innerHTML='<p>출발선에 모였습니다. 아이템 상자와 얼음 구멍을 조심하세요.</p>';
   const lanes=shuffle([...Array(n).keys()]);   // 출발 칸은 명단 순서와 무관하게 섞는다
   R=order.map((name,i)=>{
     const el=document.createElement('div');el.className='runner';el.style.height=S+'px';
     el.style.setProperty('--id',rnd(.6,1.1).toFixed(2)+'s');el.style.setProperty('--dl',(-rnd(0,1)).toFixed(2)+'s');
     el.innerHTML=`<div class="bd">${svg(cs[i].k,'sp',cs[i].c)}<span class="ic"></span></div><span class="flag"></span><span class="tag">${esc(name)}</span>`;
-    f.appendChild(el);
+    worldEl().appendChild(el);
     return{name,look:cs[i],el,bd:el.querySelector('.bd'),ic:el.querySelector('.ic'),outs:0,surge:0,fl:el.querySelector('.flag'),u:S/vbH(cs[i].k),
       x:rnd(0,.05),y:.08+.84*(n>1?lanes[i]/(n-1):.5),ty:0,ky:0,v:0,tv:0,next:0,steer:0,state:'walk',until:0,rot:0,z:0,done:0,item:'',useAt:0,star:0,boost:0,icon:'',fade:1};
   });
@@ -434,14 +443,14 @@ function build(){
   // 구멍 6개·상자 n×0.6개를 서로 60px·40px 이상 떨어뜨려 빙판 전체에 흩는다
   const spots=[];
   const spot=()=>{for(let i=0;i<60;i++){const x=rnd(.1,.9),y=rnd(.03,.97);if(spots.every(q=>Math.abs(q.x-x)*FW>60||Math.abs(q.y-y)*FH>40)){spots.push({x,y});return[x,y]}}return[rnd(.1,.9),rnd(.03,.97)]};
-  for(let i=0;i<6;i++)addObj('hole',...spot());
-  for(let i=0;i<Math.max(4,Math.ceil(n*.6));i++)addObj('box',...spot());
+  for(let i=0;i<Math.round(6*TRACK_L*.8);i++)addObj('hole',...spot());   // 빙판이 길어진 만큼 구멍·상자도 늘린다
+  for(let i=0;i<Math.ceil(Math.max(4,n*.6)*TRACK_L*.8);i++)addObj('box',...spot());
   // 남은 거리 막대: 출발~결승 사이에 캐릭터 얼굴 표시
   const pg=$('prog');pg.innerHTML='<span class="pline"></span>'+svg('flag1','pend');
   R.forEach(r=>{pg.insertAdjacentHTML('beforeend',svg(r.look.k,'pm',r.look.c));r.pm=pg.lastElementChild;r.pm.style.left='14px'});
   $('slot').innerHTML='';$('slotname').textContent='ITEM';
   const cv=$('pfx');cv.width=FW;cv.height=FH;PF=PFX(cv);
-  R.forEach(place);ranks();
+  R.forEach(place);cam(1);ranks();
   $('result').hidden=true;showWins();$('left').textContent=n;$('rest').textContent='1000m';$('time').textContent='0.0';
   if($('gmode').value==='pin')pbBuild();
 }
@@ -463,7 +472,7 @@ function fx(k,o,big){
   if(PF&&FXP[k]){const [cols,n,sp,g,sz,life,up]=FXP[k];PF.add(PX(o.x)+S/2,FY(o.y)-S*.45,n*(big?2:1),cols,sp*(big?1.3:1),g,sz,life,up)}
   const f=fieldEl(),[,,w,h]=SP[k].vb.split(' ').map(Number),m=big?2:1,W=w*UNIT*m,H=h*UNIT*m,d=document.createElement('div');
   d.className='fx';d.innerHTML=svg(k,'');d.firstChild.style.width=W+'px';
-  d.style.transform=`translate(${PX(o.x)+S/2-W/2}px,${FY(o.y)-S*.45-H/2}px)`;f.appendChild(d);setTimeout(()=>d.remove(),480);
+  d.style.transform=`translate(${PX(o.x)+S/2-W/2}px,${FY(o.y)-S*.45-H/2}px)`;worldEl().appendChild(d);setTimeout(()=>d.remove(),480);
 }
 function addObj(type,x,y,extra){
   const k={hole:'hole',box:'box',ban:'banana',proj:'fish',roll:'fishbig',krill:'krill',drop:extra&&extra.kind}[type];
@@ -483,6 +492,23 @@ function skyDrop(){const c=R.filter(alive);if(!c.length)return;
 function place(r){
   r.el.style.transform=`translate(${PX(r.x)}px,${FY(r.y)-S-r.z}px)`;r.bd.style.transform=`rotate(${r.rot}deg) scale(${r.sc||1})`;r.el.style.zIndex=Math.round(FY(r.y))+(r.z>0?400:0);r.el.style.opacity=r.fade;
 }
+function cam(snap){
+  const w=fieldEl().querySelector('.world');if(!w||PB)return;
+  const A=R.filter(alive),lead=A.length?Math.max(...A.map(r=>r.x)):1;
+  const tg=Math.max(0,Math.min(FW-VW,PX(lead)+S-VW*.68));CAM=snap?tg:CAM+(tg-CAM)*.15;
+  w.style.transform=`translateX(${-CAM|0}px)`;fieldEl().style.backgroundPosition=`${-CAM|0}px 0`;
+  // 261031 네오 "뒤처지면 날려서 장외로, 살아남은 애들은 멤버의 50%": 화면 왼쪽 밖으로 밀린 펭귄은 장외.
+  // 선두가 850m 지점(x .85)에 닿을 때까지 정원(절반)이 다 차도록, 모자라면 꼴찌부터 날린다
+  if(racing&&!snap&&G>1500&&elimCount<cutN()){
+    const off=A.filter(r=>PX(r.x)+S<CAM-4&&r.state!=='rocket').sort((a,c)=>a.x-c.x);
+    const due=Math.floor(cutN()*Math.min(1,lead/.85))>elimCount;
+    const t=off[0]||(due?A.filter(r=>r.state!=='rocket').sort((a,c)=>a.x-c.x)[0]:null);
+    if(t&&A.length>1){knockOut(t,-1);feed(`${t.name} 뒤처져서 장외! 살아남은 펭귄 ${R.length-elimCount}명`)}}
+  const nb=A.filter(r=>!r.elim&&PX(r.x)+S*.6<CAM).length,b=$('behind'),left=cutN()-elimCount;
+  if(b){b.hidden=!racing&&!nb;b.textContent=left>0?`장외까지 ${left}명 남음`+(nb?` · ◀ ${nb}명 위험`:''):`생존 확정 ${R.length-cutN()}명`+(nb?` · ◀ ${nb}명 뒤따라오는 중`:'')}
+}
+const cutN=()=>Math.floor(R.length/2);   // 장외 정원: 참가자의 절반(홀수면 살아남는 쪽이 한 명 많음)
+function knockOut(r,dir){r.flyDir=dir;r.flyT=1;r.ky=0;r.v=0;r.elim=++elimCount;r.faint=1;fx('pow',r,1);flash(r);shake(320,7);setState(r,'elim',1e9);flyOut(r)}
 function setIcon(r,k){if(r.icon===k)return;r.icon=k;r.ic.style.display=k?'block':'none';if(k){r.ic.innerHTML=svg(k,'');r.ic.style.height=ROWS[k]*r.u+'px'}}
 function setState(r,s,ms){r.rot%=360;if(s!=='down'&&s!=='elim')r.faint=0;r.el.classList.toggle('ko',(s==='down'||s==='elim')&&!!r.faint);r.dur=ms;r.state=s;r.until=G+ms;
   if(s==='hit'||s==='down')r.pose=r.nextPose||pick(['front','back','spin']);if(s==='elim')r.pose=pick(['front','back']);r.nextPose='';if(s==='jump')r.flip=Math.random()<.3;r.el.classList.toggle('swim',s==='swim');r.el.classList.toggle('walk',s==='walk'||s==='jump');
@@ -559,9 +585,9 @@ function tick(now){
     else r.rot+=((s==='slip'?-35+Math.sin(G/40)*10:s==='hit'||s==='down'?(r.pose==='back'?-90:90):0)-r.rot)*Math.min(1,dt*12);
     r.z=s==='jump'?Math.sin(Math.PI*pr)*S*(r.flip?.9:.6):0;
     // 장외
-    if(s!=='down'&&(r.y<-.06||r.y>1.06)){r.flyDir=r.y<0?-1:1;r.flyT=1;r.ky=0;r.v=0;r.elim=++elimCount;r.faint=1;fx('pow',r,1);flash(r);shake(320,7);setState(r,'elim',1e9);
-      flyOut(r);
-      feed(`${r.name} 장외! 맵 밖으로 날아가 탈락했습니다`);slow(600);continue}
+    if(s!=='down'&&(r.y<-.06||r.y>1.06)){
+      if(elimCount>=cutN()){r.y=Math.max(0,Math.min(1,r.y));r.ky=-r.ky*.5}   // 탈락 정원이 찼으면 벽에 튕겨 남는다
+      else{knockOut(r,r.y<0?-1:1);feed(`${r.name} 장외! 맵 밖으로 날아가 탈락했습니다`);slow(600);continue}}
     // 아이템 사용
     if(r.item&&G>r.useAt&&free(r))useItem(r);
     // 결승
@@ -676,7 +702,7 @@ function tick(now){
       if(crew.length>=2){crew.forEach(c=>throwFish(c,lead));feed(`${crew.map(c=>c.name).join('·')} 협동! 선두 ${lead.name} 집중 공격`);
         if(Math.random()<.3){const t=pick(crew);throwFish(lead,t);feed(`${lead.name} 반격! ${t.name}에게 되던졌습니다`)}}}
   }
-  R.forEach(place);
+  R.forEach(place);cam();
   // 부스터·별 꼬리, 화면 흔들림, 입자 그리기
   if(PF){for(const r of RS)if(alive(r)&&(r.boost>G||r.star>G)&&Math.random()<.7)PF.add(PX(r.x)+6,FY(r.y)-S*rnd(.2,.6),1,r.star>G?['#FF7AA2','#FFE58A','#9CC3FF','#2BB673']:['#9CC3FF','#FFFFFF'],25,0,4,.4);
     PF.step(Math.min(.05,dt/SPD))}
@@ -699,7 +725,7 @@ function tick(now){
 }
 function showWins(){
   const k=+$('topn').value,back=$('mode').value==='back';
-  if(PB){const s=[...R].sort((a,b)=>back?a.sc-b.sc:b.sc-a.sc).slice(0,k);$('winlbl').textContent=back?`점수 낮은 ${k}명`:`점수 ${k}등까지`;$('wins').textContent=s.some(r=>r.sc)?s.map(r=>r.name).join('·'):'아직 없음';return}
+  if(PB){const n=R.length,s=R.filter(r=>r.done&&(back?r.done>n-k:r.done<=k)).sort((a,b)=>a.done-b.done);$('winlbl').textContent=back?`마지막까지 남은 ${k}명`:`먼저 떨어진 ${k}명`;$('wins').textContent=s.length?s.map(r=>r.done+'등 '+r.name).join('·'):'아직 없음';return}
   if(back){const out=R.filter(r=>r.elim).sort((a,b)=>a.elim-b.elim).slice(0,k);$('winlbl').textContent=`꼴찌 ${k}명(먼저 탈락순)`;$('wins').textContent=out.length?out.map(r=>r.name).join('·'):'아직 없음';return}
   const got=R.filter(r=>r.done&&r.done<=k).sort((a,b)=>a.done-b.done);
   $('winlbl').textContent=`${k}등까지 당첨`;$('wins').textContent=got.length?got.map(r=>r.done+'등 '+r.name).join('·'):'아직 없음';
@@ -718,9 +744,9 @@ const TCO={I:['#00E5FF','#9FF6FF','#0090A8'],O:['#F7D51D','#FFF3A0','#A88B00'],T
 function tetPiece(){
   const k=pick(Object.keys(TSH)),cells=TSH[k],[c,hi,lo]=TCO[k],u=Math.round(S*.4),w=Math.max(...cells.map(q=>q[0]))+1,h=Math.max(...cells.map(q=>q[1]))+1;
   let s='';for(const [x,y] of cells){const X=x*8,Y=y*8;s+=`<rect x="${X}" y="${Y}" width="8" height="8" fill="${c}"/><rect x="${X}" y="${Y}" width="8" height="1" fill="${hi}"/><rect x="${X}" y="${Y}" width="1" height="8" fill="${hi}"/><rect x="${X}" y="${Y+7}" width="8" height="1" fill="${lo}"/><rect x="${X+7}" y="${Y}" width="1" height="8" fill="${lo}"/>`}
-  const d=document.createElement('div');d.className='tp';d.innerHTML=`<svg viewBox="0 0 ${w*8} ${h*8}" style="width:${w*u}px">${s}</svg>`;fieldEl().appendChild(d);
-  if(!TCOL.length){const n=Math.max(4,Math.floor((FW-40)/(u*3)));TCOL=shuffle([...Array(n).keys()]).map(i=>i/n)}   // 칸을 나눠 한 바퀴씩 섞어 떨어뜨린다
-  const o={el:d,x:Math.min(FW-w*u-24,10+TCOL.pop()*(FW-40)+rnd(0,u)),y:-h*u,w:w*u,h:h*u,vy:rnd(320,460),land:0};TP.push(o);return o;
+  const d=document.createElement('div');d.className='tp';d.innerHTML=`<svg viewBox="0 0 ${w*8} ${h*8}" style="width:${w*u}px">${s}</svg>`;worldEl().appendChild(d);
+  if(!TCOL.length){const n=Math.max(4,Math.floor((VW-40)/(u*3)));TCOL=shuffle([...Array(n).keys()]).map(i=>i/n)}   // 칸을 나눠 한 바퀴씩 섞어 떨어뜨린다
+  const o={el:d,x:Math.min(CAM+VW-w*u-24,CAM+10+TCOL.pop()*(VW-40)+rnd(0,u)),y:-h*u,w:w*u,h:h*u,vy:rnd(320,460),land:0};TP.push(o);return o;
 }
 function startTet(){
   tetris=true;tetEnd=G+4500;tetNext=0;fieldEl().classList.add('tet');slow(500);
@@ -753,7 +779,9 @@ function tetHop(r,v,flip){r.hopU=G+460;r.hopV=v;r.hopF=flip}
 // 261025 핀볼 모드 개편(네오 "기존 핀볼게임 참고해서 레이아웃 싹 갈아엎어"): 세로 핀볼대. 펭귄이 곧 공, 제한 시간이 끝나면 점수 높은 순으로 등수
 // 판 좌표는 480×800 단위(위 → 아래 y 증가), 중력으로 굴러 내려오고 플리퍼는 자동(가끔 헛침). 배치는 지식배달_261025 레퍼런스 분석 기준
 let pinMode=false,PB=null;
-const PBW=480,PBH=800,BR=14,PB_LIMIT=40000,PB_BALLS=2;
+// 261031 네오 "점수모으기 말고 아래로 떨어지는 순서로, 모션 과해 산만, 너무 오래 걸림": 배수구에 먼저 떨어진 순서가 등수
+// 플리퍼는 5초까지 잘 치다가 11초에 완전히 멈춘다(그 뒤 전원 낙하). 17초가 지나도 남은 펭귄은 아래쪽에 있는 순서로 등수
+const PBW=480,PBH=800,BR=14,PB_LIMIT=17000,PB_FADE0=5000,PB_FADE1=11000;
 const PBUMP=[[160,205],[280,205],[220,285]],PLANE=[130,190,250,310],PDROP=[150,190,230],PSAU=[310,385];
 const FLEN=66,FDOWN=.5,FUP=-.4;
 const fmt=n=>n.toLocaleString('ko-KR');
@@ -841,38 +869,31 @@ function pbSvg(tw,th){
 function pbBuild(){
   const f=fieldEl();f.innerHTML='';f.classList.add('pinball');document.querySelector('.game').classList.add('pinm');
   // 261025 확대 카메라(네오 "박진감 넘치게, 내비게이터를 사이드에 띄우고 메인 화면을 확대하는 느낌"): 판을 화면보다 크게 그리고 카메라가 사건을 따라간다
-  FW=f.clientWidth||600;const mob=FW<640,MW=mob?0:Math.round(Math.min(260,Math.max(140,FW*.26)));
-  const VW=FW-MW-(MW?16:0),VH=Math.round(Math.min(900,Math.max(460,innerHeight-160)));
-  const k=Math.max(Math.min(VW/PBW,VH/PBH),Math.min(VW/(PBW*.65),VH/(PBH*.5))),tw=PBW*k,th=PBH*k;
-  PB={k,ox:0,oy:0,W:pbWalls(),lanes:[0,0,0,0],drop:[1,1,1],jack:1000,kick:1,fever:0,hurry:0,sau:null,sauT:0,sauCd:0,skill:0,
-    fl:[{px:140,py:705,s:1},{px:300,py:705,s:-1}].map(q=>({...q,a:FDOWN,up:0,cd:0,om:0})),Q:[],nextL:Infinity,limit:Infinity,over:0,lit:{},dmdAt:0,rkAt:0,
-    cx:240,cy:380,z:1,fo:null,foU:0,stU:0,zU:0,tw,th};
-  const mw=mob?84:MW-14,mh=mw*PBH/PBW;
-  f.insertAdjacentHTML('beforeend',`<div class="pbv" style="left:${MW?MW+16:0}px"><div class="pbw" style="width:${tw}px;height:${th}px">${pbSvg(tw,th)}<canvas class="pfx" id="pfx"></canvas></div><div class="pbsnow"></div><div class="pbsnow b"></div><div class="dmd" id="dmd"></div></div>`+
-    `<div class="pbm">${mob?'':'<div>전체판</div>'}${pbSvg(mw,mh).replace(/ id="/g,' data-i="')}<canvas id="pbmc" width="${mw}" height="${mh}"></canvas></div>`);
-  PB.vp=f.querySelector('.pbv');PB.wd=f.querySelector('.pbw');PB.mc=$('pbmc').getContext('2d');PB.mk=mw/PBW;
+  FW=f.clientWidth||600;
+  const VW=FW,VH=Math.round(Math.min(900,Math.max(560,innerHeight-160))),TOP=58;
+  const k=Math.min(VW/PBW,(VH-TOP)/PBH),tw=PBW*k,th=PBH*k;
+  PB={k,ox:0,oy:0,W:pbWalls(),lanes:[0,0,0,0],drop:[1,1,1],kick:0,
+    fl:[{px:140,py:705,s:1},{px:300,py:705,s:-1}].map(q=>({...q,a:FDOWN,up:0,cd:0,om:0})),Q:[],nextL:Infinity,limit:Infinity,t0:Infinity,n:0,over:0,lit:{},dmdAt:0,rkAt:0,tw,th};
+  f.insertAdjacentHTML('beforeend',`<div class="pbv" style="left:0"><div class="pbw" style="width:${tw}px;height:${th}px">${pbSvg(tw,th)}<canvas class="pfx" id="pfx"></canvas></div><div class="dmd" id="dmd"></div></div>`);
+  PB.vp=f.querySelector('.pbv');PB.wd=f.querySelector('.pbw');
   FH=VH;f.style.height=FH+'px';pbDmd();
   const hp=BR*2.7*k;
   for(const r of R){PB.wd.appendChild(r.el);r.el.classList.remove('walk','win');r.el.style.display='none';r.el.style.height=hp+'px';r.el.style.opacity=1;r.fl.style.display='none';
     const [,,vw,vh]=SP[r.look.k==='아델리펭귄'?'adelie':r.look.k].vb.split(' ').map(Number);r.hw=hp*vw/vh/2;r.hh=hp/2;
-    Object.assign(r,{ps:'wait',sc:0,mult:1,balls:PB_BALLS,rot:0,fz:[0,0],laneCd:0,orbCd:0,combo:0,lastShot:-1e9,still:0,tgU:0,done:0,elim:0})}
+    Object.assign(r,{ps:'wait',rot:0,fz:[0,0],still:0,done:0,elim:0})}
   R.forEach((r,i)=>r.dot=['#FF9F1C','#2F6BFF','#2BB673','#C77DFF','#FF7AA2','#00B3C7','#F7B500','#E5484D'][i%8]);
   PB.Q=shuffle(R.slice());
   const cv=$('pfx');cv.width=Math.ceil(tw);cv.height=Math.ceil(th);PF=PFX(cv);
-  $('rest').previousElementSibling.textContent='남은 시간';$('rest').textContent=(PB_LIMIT/1000).toFixed(1)+'초';
-  $('feed').innerHTML='<p>핀볼대에 모였습니다. 빙산·레인·조약돌·크릴 구멍으로 점수를 모으세요.</p>';pbDmd();ranks();pbCam(1);
+  $('rest').previousElementSibling.textContent='떨어진 펭귄';$('rest').textContent='0명';
+  $('feed').innerHTML='<p>맨 아래 바다(배수구)로 먼저 떨어지는 펭귄이 1등입니다.</p>';pbDmd();ranks();pbCam();
 }
 function pbStart(){
-  PB.nextL=G+300;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
-  feed('핀볼 모드! 펭귄이 공이 되어 튕깁니다. 40초 뒤 점수 높은 순으로 등수');eventBanner('핀볼 모드!','40초 · 점수 순으로 등수','#C77DFF');
+  PB.nextL=G+300;PB.t0=G;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
+  feed('발사! 바다로 먼저 떨어진 순서대로 1등, 2등… 플리퍼는 점점 힘이 빠집니다');
 }
-function pbLaunch(r){Object.assign(r,{ps:'play',x:440,y:770,vx:0,vy:-rnd(1550,1800),launchAt:G,saveUntil:G+5000,still:0});r.el.style.display='';
-  if(PF)pbFx('dust',440,780)}
+function pbLaunch(r){Object.assign(r,{ps:'play',x:440,y:770,vx:0,vy:-rnd(1550,1800),launchAt:G,still:0});r.el.style.display=''}
 const pbX=x=>PB.ox+x*PB.k,pbY=y=>PB.oy+y*PB.k;
 function pbFx(kind,x,y,big){if(!PF)return;const [cols,n,sp,g,sz,life,up]=FXP[kind];PF.add(pbX(x),pbY(y),n*(big?2:1),cols,sp*(big?1.3:1),g,sz,life,up)}
-function pbPop(r,t,cls){if(cls==='big'){PB.fo=r;PB.foU=G+1800;PB.zU=G+900}const d=document.createElement('div');d.className='pbp'+(cls?' '+cls:'');d.textContent=t;
-  d.style.setProperty('--x',pbX(r.x)-20+'px');d.style.setProperty('--y',pbY(r.y)-PB.k*BR*3+'px');PB.wd.appendChild(d);setTimeout(()=>d.remove(),820)}
-function pbScore(r,p){const m=r.mult*(PB.fever>G||PB.hurry?2:1),v=p*m;r.sc+=v;if(v>=250){pbPop(r,'+'+fmt(v));r.tgU=G+1500}return v}
 function pbLight(id,ms){PB.lit[id]=G+(ms||110)}
 function segHit(b,x1,y1,x2,y2,rad,e){
   const dx=x2-x1,dy=y2-y1;let t=((b.x-x1)*dx+(b.y-y1)*dy)/(dx*dx+dy*dy);t=t<0?0:t>1?1:t;
@@ -886,118 +907,80 @@ function pbStep(h){
     b.vy+=1100*h;b.x+=b.vx*h;b.y+=b.vy*h;
     const sp=Math.hypot(b.vx,b.vy);if(sp>1800){b.vx*=1800/sp;b.vy*=1800/sp}
     for(const s of PB.W){const c=segHit(b,s.x1,s.y1,s.x2,s.y2,BR+3,s.t==='sl'?.2:.45);
-      if(c&&s.t==='sl'&&c.vn<-80){b.vx+=c.nx*520;b.vy+=c.ny*520;pbScore(b,10);pbLight('psl'+s.i);pbFx('spark',b.x,b.y)}}
-    PDROP.forEach((x,i)=>{if(!PB.drop[i])return;const c=segHit(b,x-15,368,x+15,368,BR+6,.5);if(c&&c.vn<-120)pbTarget(b,i)});
+      if(c&&s.t==='sl'&&c.vn<-80){b.vx+=c.nx*520;b.vy+=c.ny*520;pbLight('psl'+s.i)}}
+    PDROP.forEach(x=>segHit(b,x-15,368,x+15,368,BR+6,.5));
     PBUMP.forEach(([x,y],i)=>{let nx=b.x-x,ny=b.y-y;const d=Math.hypot(nx,ny);if(d>=BR+24||d<1e-6)return;nx/=d;ny/=d;b.x=x+nx*(BR+24);b.y=y+ny*(BR+24);
       const vn=b.vx*nx+b.vy*ny;b.vx-=vn*nx;b.vy-=vn*ny;b.vx+=nx*Math.max(720,Math.abs(vn));b.vy+=ny*Math.max(720,Math.abs(vn));
-      pbScore(b,100);PB.jack+=20;pbLight('pbm'+i);pbFx('spark',x+nx*24,y+ny*24);shake(70,2)});
+      pbLight('pbm'+i)});
     PB.fl.forEach(q=>{const an=q.s>0?q.a:Math.PI-q.a,om=q.s>0?q.om:-q.om,ex=q.px+Math.cos(an)*FLEN,ey=q.py+Math.sin(an)*FLEN;
       const vx=b.vx,vy=b.vy,c=segHit(b,q.px,q.py,ex,ey,BR+8,0);if(!c)return;b.vx=vx;b.vy=vy;
       const px=-om*(c.cy-q.py),py=om*(c.cx-q.px),rx=b.vx-px,ry=b.vy-py,rn=rx*c.nx+ry*c.ny;
       if(rn<0){b.vx=px+rx-1.3*rn*c.nx;b.vy=py+ry-1.3*rn*c.ny}});
-    // 크릴 구멍(잭팟): 느리게 들어오면 붙잡았다가 위로 뱉는다. 뱉은 공은 2.5초간 다시 못 들어감(같은 공이 잭팟을 되풀이하던 문제)
-    {const dx=b.x-PSAU[0],dy=b.y-PSAU[1],d=Math.hypot(dx,dy);
-      if(d<16&&!PB.sau&&G>PB.sauCd&&G>(b.sauCd||0)&&Math.hypot(b.vx,b.vy)<1100)pbJackpot(b);
-      else if(d<BR+12&&PB.sau!==b&&(PB.sau||G<=PB.sauCd||G<=(b.sauCd||0))){const nx=dx/(d||1),ny=dy/(d||1);b.x=PSAU[0]+nx*(BR+12);b.y=PSAU[1]+ny*(BR+12);b.vx+=nx*300;b.vy+=ny*300}}
-    // 롤오버 레인: 4칸을 다 켜면 그 펭귄 배수 +1(최대 ×3, 한 명이 너무 앞서지 않게). 발사 직후 깜빡이는 칸에 먼저 들어가면 스킬샷
-    if(b.y>62&&b.y<104&&G>b.laneCd)PLANE.forEach((x,i)=>{if(Math.abs(b.x-x)>22)return;b.laneCd=G+500;
-      if(!b.skillDone){b.skillDone=1;if(i===PB.skill&&G-b.launchAt<3000){pbScore(b,1000);pbPop(b,'스킬샷!','big');feed(`${b.name} 스킬샷! 깜빡이는 레인에 쏙`)}}
-      if(!PB.lanes[i]){PB.lanes[i]=1;pbScore(b,50)}
-      if(PB.lanes.every(Boolean)){PB.lanes=[0,0,0,0];b.mult=Math.min(3,b.mult+1);pbPop(b,'×'+b.mult,'big');b.tgU=G+2000;feed(`${b.name} 레인 4칸 완성! 점수 ×${b.mult}`)}});
-    // 램프·오빗: 3.5초 안에 다시 타면 콤보로 점수가 커진다
-    const orb=b.y>280&&b.y<320&&(b.x<56||b.x>384&&b.x<420);
-    if(orb&&G>b.orbCd){b.orbCd=G+900;b.combo=G-b.lastShot<3500?b.combo+1:1;b.lastShot=G;pbScore(b,300*b.combo);
-      if(b.combo>=2){pbPop(b,b.combo+'콤보!','big');feed(`${b.name} ${b.x<56?'오로라':'해류'} ${b.combo}연속 콤보!`)}}
-    // 킥백: 왼쪽 아웃레인에 불이 켜져 있으면 한 번 되쏜다
-    if(PB.kick&&b.x<60&&b.y>672&&b.vy>0){PB.kick=0;b.vy=-1500;b.vx=rnd(20,90);pbFx('pow',b.x,b.y);shake(160,3);feed(`킥백! ${b.name} 아웃레인에서 튕겨 올라옵니다`)}
+    {const dx=b.x-PSAU[0],dy=b.y-PSAU[1],d=Math.hypot(dx,dy);   // 크릴 구멍은 둥근 장애물
+      if(d<BR+12){const nx=dx/(d||1),ny=dy/(d||1);b.x=PSAU[0]+nx*(BR+12);b.y=PSAU[1]+ny*(BR+12);b.vx+=nx*300;b.vy+=ny*300}}
   }
   for(let i=0;i<B.length;i++)for(let j=i+1;j<B.length;j++){const a=B[i],c=B[j];let nx=c.x-a.x,ny=c.y-a.y;const d=Math.hypot(nx,ny);
     if(d>=BR*2||d<1e-6)continue;nx/=d;ny/=d;const o=(BR*2-d)/2;a.x-=nx*o;a.y-=ny*o;c.x+=nx*o;c.y+=ny*o;
     const rv=(c.vx-a.vx)*nx+(c.vy-a.vy)*ny;if(rv<0){const im=-.95*rv;a.vx-=im*nx;a.vy-=im*ny;c.vx+=im*nx;c.vy+=im*ny}}
 }
-function pbTarget(b,i){PB.drop[i]=0;pbScore(b,250);pbFx('pow',PDROP[i],368);
-  if(PB.drop.some(Boolean))return;
-  pbScore(b,1000);pbPop(b,'미션 완료!','big');b.tgU=G+2500;PB.fever=G+7000;PB.kick=1;slow(500);
-  eventBanner('FEVER!',`${b.name} 둥지 조약돌 다 모음 · 7초간 점수 2배`,'#FF7AA2');feed(`${b.name} 조약돌 3개 모아 둥지 완성! 피버 타임, 킥백 다시 켜짐`);
-  setTimeout(()=>{if(PB)PB.drop=[1,1,1]},1500);
-}
-function pbJackpot(b){PB.sau=b;PB.zU=G+1400;PB.sauT=G+900;b.ps='hold';b.x=PSAU[0];b.y=PSAU[1];b.vx=b.vy=0;
-  const v=pbScore(b,PB.jack);pbPop(b,'잭팟 +'+fmt(v),'big');b.tgU=G+2500;PB.jack=1000;
-  pbFx('confetti',b.x,b.y,1);pbFx('pow',b.x,b.y,1);shake(300,6);slow(500);eventBanner('잭팟!',`${b.name} 크릴 구멍 +${fmt(v)}`,'#F7B500');feed(`${b.name} 크릴 구멍 잭팟! ${fmt(v)}점`)}
 function pbDrain(b){
-  b.balls--;const save=G<b.saveUntil||PB.fever>G;
-  if(save||b.balls>0){if(save)b.balls++;b.ps='wait';b.el.style.display='none';PB.Q.unshift(b);PB.nextL=Math.min(PB.nextL,G+350);
-    feed(save?`볼 세이브! ${b.name} 다시 발사`:`${b.name} 배수구로! 마지막 공으로 다시 발사`);if(save)pbPop(b,'SAVE','big');return}
-  b.ps='out';b.el.style.display='none';pbFx('splash',Math.max(40,Math.min(400,b.x)),790,1);shake(200,4);feed(`${b.name} 공을 다 잃었습니다. ${fmt(b.sc)}점에서 멈춤`);
+  b.ps='out';b.done=++PB.n;b.el.style.display='none';pbFx('splash',Math.max(40,Math.min(400,b.x)),790);
+  if(PB.lb)PB.lb.remove();const d=PB.lb=document.createElement('div');d.className='pbg'+(b.done<=3?' r'+b.done:'');d.textContent=`${b.done}등 ${b.name}`;
+  d.style.left=pbX(Math.max(70,Math.min(370,b.x)))+'px';d.style.top=pbY(724)+'px';PB.wd.appendChild(d);setTimeout(()=>d.remove(),1400);
+  feed(`${b.done}등 ${b.name} 바다로 풍덩`);
 }
 function pbDmd(){
-  const L=PB.lanes.map(v=>v?'●':'○').join(''),D=PB.drop.map(v=>v?'□':'■').join('');
-  $('dmd').innerHTML=`<span>잭팟 <b>${fmt(PB.jack)}</b></span><span>레인 <b>${L}</b></span><span>조약돌 <b>${D}</b></span><span>킥백 <b>${PB.kick?'ON':'OFF'}</b></span>`+
-    (PB.Q.length&&racing?`<span>대기 <b>${PB.Q.length}</b></span>`:'')+(PB.fever>G?'<span class="fv">FEVER ×2</span>':PB.hurry?'<span class="fv">LAST ×2</span>':'');
+  const n=R.length,pw=Math.round(pbPow()*100);
+  $('dmd').innerHTML=`<span>떨어진 펭귄 <b>${PB.n}/${n}</b></span>`+(PB.n<n?`<span>다음 <b>${PB.n+1}등</b></span>`:'')+
+    `<span>플리퍼 힘 <i class="bar"><i style="width:${pw}%"></i></i></span>`;
 }
-// 카메라: 큰 사건(잭팟·콤보·미션) 펭귄 → 따라가던 펭귄(2.5초 고정) → 점수 1등 순. 진행 방향을 조금 앞서 보고, 사건 때는 살짝 당겨 찍는다
-function pbCam(snap){
-  let b=PB.sau||(PB.foU>G&&PB.fo&&(PB.fo.ps==='play'||PB.fo.ps==='hold')?PB.fo:null);
-  if(!b&&PB.cur&&PB.cur.ps==='play'&&G<PB.stU)b=PB.cur;
-  if(!b){const P=R.filter(r=>r.ps==='play');b=P.sort((a,c)=>c.sc-a.sc||c.launchAt-a.launchAt)[0]||null;if(b!==PB.cur)PB.stU=G+2500}
-  PB.cur=b;
-  const tx=b?b.x+b.vx*.12:racing?400:240,ty=b?b.y+b.vy*.12:racing?640:380,a=snap?1:.12,za=PB.zU>G?1.22:1;
-  PB.cx+=(tx-PB.cx)*a;PB.cy+=(ty-PB.cy)*a;PB.z+=(za-PB.z)*(snap?1:.08);
-  const k=PB.k*PB.z,vw=PB.vp.clientWidth,vh=PB.vp.clientHeight,W=PBW*k,H=PBH*k,top=$('dmd').offsetHeight+12;
-  const cl=(v,len,full,lo)=>full+lo<=len?(full-len-lo)/2:Math.max(-lo,Math.min(full-len,v));
-  PB.X=cl(PB.cx*k-vw/2,vw,W,0);PB.Y=cl(PB.cy*k-vh/2-top/2,vh,H,top);
-  PB.wd.style.transform=`translate(${-PB.X|0}px,${-PB.Y|0}px) scale(${PB.z.toFixed(3)})`;
-  // 내비게이터: 펭귄 점(1등 금색 테두리) + 지금 보는 범위
-  const c=PB.mc,m=PB.mk;c.clearRect(0,0,c.canvas.width,c.canvas.height);const top1=[...R].sort((p,q)=>q.sc-p.sc)[0];
-  for(const r of R){if(r.ps!=='play'&&r.ps!=='hold')continue;c.fillStyle=r.dot;c.fillRect(r.x*m-3,r.y*m-3,6,6);
-    if(r===top1&&r.sc>0){c.strokeStyle='#FFE58A';c.lineWidth=2;c.strokeRect(r.x*m-5,r.y*m-5,10,10)}}
-  c.strokeStyle='#5CE1C6';c.lineWidth=2;c.strokeRect(Math.max(1,PB.X/k*m),Math.max(1,PB.Y/k*m),Math.min(c.canvas.width-2,vw/k*m),Math.min(c.canvas.height-2,vh/k*m));
+// 플리퍼가 칠 확률: 5초까지 80%, 11초에 0%
+function pbPow(){const t=G-PB.t0;return t<PB_FADE0?.8:Math.max(0,.8*(1-(t-PB_FADE0)/(PB_FADE1-PB_FADE0)))}
+// 판 전체를 한 화면에 고정해 보여 준다(카메라 이동·확대 없음)
+function pbCam(){
+  const k=PB.k,vw=PB.vp.clientWidth,vh=PB.vp.clientHeight,top=58;
+  PB.X=-(vw-PBW*k)/2;PB.Y=-Math.max(top,(vh-PBH*k+top)/2);
+  PB.wd.style.transform=`translate(${-PB.X|0}px,${-PB.Y|0}px)`;
 }
 function pbDraw(){
-  const k=PB.k,top=[...R].sort((a,b)=>b.sc-a.sc).slice(0,3).filter(r=>r.sc>0),few=R.length<=10;
+  const few=R.length<=12;
   for(const r of R){if(r.ps!=='play'&&r.ps!=='hold')continue;
     r.rot+=(Math.max(-35,Math.min(35,r.vx*.04))-r.rot)*.25;
     r.el.style.transform=`translate(${pbX(r.x)-r.hw}px,${pbY(r.y)-r.hh}px)`;r.bd.style.transform=`rotate(${r.rot}deg)`;r.el.style.zIndex=3000+(r.y|0);
-    r.el.classList.toggle('tg',few||r.tgU>G||top.includes(r))}
+    r.el.classList.toggle('tg',few)}
   PB.fl.forEach((q,i)=>$('pf'+i).setAttribute('transform',`translate(${q.px} ${q.py}) rotate(${(q.s>0?q.a:Math.PI-q.a)*57.2958})`));
-  PB.lanes.forEach((v,i)=>{const e=$('pl'+i);e.classList.toggle('on',!!v);e.classList.toggle('sk',!v&&PB.Q.length>0&&i===PB.skill)});
-  PB.drop.forEach((v,i)=>$('pdt'+i).classList.toggle('dn',!v));
-  $('pkb').classList.toggle('dn',!PB.kick);$('psau').classList.toggle('on',!!PB.sau);
+  $('pkb').classList.add('dn');
   for(const id in PB.lit)$(id).classList.toggle('hit',PB.lit[id]>G);
   pbCam();
 }
 function pbTick(now){
   const dt=Math.min(.05,(now-last)/1000)*turbo*(now<slowUntil&&turbo===1?.35:1);last=now;G+=dt*1000;
   if(!PB.over){
-    PB.skill=(G/400|0)%4;
-    if(PB.Q.length&&G>PB.nextL){pbLaunch(PB.Q.shift());PB.nextL=G+Math.max(220,Math.min(450,9000/R.length))}
+    if(PB.Q.length&&G>PB.nextL){pbLaunch(PB.Q.shift());PB.nextL=G+Math.max(120,Math.min(300,2400/R.length))}
     const n=Math.min(120,Math.max(1,Math.ceil(dt*720))),h=dt/n;for(let i=0;i<n;i++)pbStep(h);
-    // 자동 플리퍼: 공이 플리퍼 위로 내려오면 친다. 공마다 다가올 때 18% 확률로 헛친다
-    PB.fl.forEach((q,i)=>{let want=0;
+    // 자동 플리퍼: 공이 플리퍼 위로 내려오면 친다. 칠 확률은 시간이 갈수록 줄어든다
+    const pw=pbPow();PB.fl.forEach((q,i)=>{let want=0;
       for(const b of R){if(b.ps!=='play')continue;const dx=(b.x-q.px)*q.s,dy=b.y-q.py-dx*Math.tan(FDOWN);
         if(dx<-12||dx>FLEN+14||dy<-90||dy>30||b.vy<-200){b.fz[i]=0;continue}
-        if(!b.fz[i])b.fz[i]=Math.random()<.18?2:1;if(b.fz[i]===1&&dy>-48)want=1}
+        if(!b.fz[i])b.fz[i]=Math.random()<pw?1:2;if(b.fz[i]===1&&dy>-48)want=1}
       if(want&&q.up<G&&G>q.cd){q.up=G+170;q.cd=G+300}});
     for(const b of R){if(b.ps!=='play')continue;
       if(!(b.x>-50&&b.x<530&&b.y>-50)||isNaN(b.x+b.y)){pbLaunch(b);continue}   // 혹시 판 밖으로 새면 다시 발사
       if(b.y>PBH+BR&&b.x<420){pbDrain(b);continue}
       if(b.x>420&&b.y>740&&Math.abs(b.vy)<60){pbLaunch(b);continue}   // 플런저 길로 굴러 내려오면 다시 쏜다
       b.still=Math.hypot(b.vx,b.vy)<25?b.still+dt:0;if(b.still>1.2){b.still=0;b.vy=-500;b.vx=rnd(-200,200)}}   // 어딘가 끼면 톡 쳐 준다
-    if(PB.sau&&G>PB.sauT){const b=PB.sau;PB.sau=null;PB.sauCd=G+1200;b.sauCd=G+2500;b.ps='play';b.vx=-rnd(250,500);b.vy=-rnd(950,1150);b.y-=BR+14}
-    if(!PB.hurry&&PB.limit-G<8000){PB.hurry=1;eventBanner('라스트 스퍼트!','남은 8초 · 점수 2배','#E5484D');feed('8초 남았습니다! 이제부터 점수 2배')}
     if(G>PB.limit||R.every(r=>r.ps==='out'))pbEnd();
   }
   pbDraw();if(PF)PF.step(Math.min(.05,dt));
-  PB.vp.style.transform=now<shakeUntil?`translate(${rnd(-shakeAmp,shakeAmp)|0}px,${rnd(-shakeAmp,shakeAmp)|0}px)`:'';
-  $('time').textContent=((now-t0)/1000).toFixed(1);$('rest').textContent=Math.max(0,(PB.limit-G)/1000).toFixed(1)+'초';
+  $('time').textContent=((now-t0)/1000).toFixed(1);$('rest').textContent=PB.n+'명';
   $('left').textContent=R.filter(r=>r.ps!=='out').length;
   if(now>PB.dmdAt){PB.dmdAt=now+120;pbDmd()}
   if(now>PB.rkAt){PB.rkAt=now+250;ranks();showWins()}
   if(racing)raf=requestAnimationFrame(tick);
 }
 function pbEnd(){
-  PB.over=1;const s=[...R].sort((a,b)=>b.sc-a.sc||(b.ps!=='out')-(a.ps!=='out'));s.forEach((r,i)=>{r.done=i+1;r.elim=0});
-  ranks();showWins();pbDmd();eventBanner('게임 종료!','점수 순으로 등수 확정','#2BB673');feed(`게임 종료! 1등 ${s[0].name} ${fmt(s[0].sc)}점`);
+  PB.over=1;R.filter(r=>!r.done).sort((a,b)=>(b.y||0)-(a.y||0)).forEach(r=>{r.done=++PB.n;r.ps='out'});   // 시간이 다 되면 아래쪽에 있는 순서로
+  R.forEach(r=>r.elim=0);ranks();showWins();pbDmd();feed(`끝! 1등 ${R.find(r=>r.done===1).name}`);
   setTimeout(()=>{cancelAnimationFrame(raf);finish()},1600);
 }
 function startPin(){
@@ -1049,7 +1032,7 @@ function makePond(cx){
   const inside=(i,j)=>{const dx=(i+.5)/W*2-1,dy=(j+.5)/H*2-1,a=Math.atan2(dy,dx);let r=1;for(let k=0;k<6;k++)r+=amp[k]*Math.sin((k+2)*a+ph[k]);return dx*dx+dy*dy<(r*.85)**2};
   let s='';for(let j=0;j<H;j++)for(let i=0;i<W;i++){if(!inside(i,j))continue;const edge=!inside(i-1,j)||!inside(i+1,j)||!inside(i,j-1)||!inside(i,j+1);
     s+=`<rect x="${i}" y="${j}" width="1" height="1" fill="${edge?'#DCEBFF':((i*7+j*3)%11===0?'#5B8CFF':'#1F4FD8')}"/>`}
-  const el=document.createElement('div');el.className='pond';el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" shape-rendering="crispEdges">${s}</svg>`;f.appendChild(el);
+  const el=document.createElement('div');el.className='pond';el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" shape-rendering="crispEdges">${s}</svg>`;worldEl().appendChild(el);
   const o={type:'pond',cx,cy,rx,ry,until:G+4800,el,live:1,inside};OBJ.push(o);placePond(o);
   for(let i=0;i<6;i++)setTimeout(()=>fx('splash',{x:cx+rnd(-rx,rx)*.6-.02,y:cy+rnd(-ry,ry)*.6},1),i*90);
   feed('지구온난화로 빙판이 녹아 한가운데 큰 연못이 생겼습니다!');
@@ -1067,7 +1050,7 @@ function eventBanner(title,sub,color){
 // 결승 도착: 결승선 번쩍임, 머리 위로 'N등 GOAL!' 글자가 튀어 오르고, 1~3등은 금·은·동 색으로 크게
 // 261007 장외: 경기장 틀을 넘어 브라우저 화면 밖까지 빙글빙글 날아가 사라진다(복제본을 화면 고정 층에 띄움)
 function flyOut(r){
-  const b=r.el.getBoundingClientRect(),c=r.el.cloneNode(true);r.el.style.display='none';
+  const b0=r.el.getBoundingClientRect(),fr=fieldEl().getBoundingClientRect(),b={left:Math.max(b0.left,fr.left+4),top:b0.top,bottom:b0.bottom,height:b0.height},c=r.el.cloneNode(true);r.el.style.display='none';
   c.style.cssText=`position:fixed;left:0;top:0;height:${b.height}px;z-index:99999;pointer-events:none;transform:translate(${b.left}px,${b.top}px)`;
   document.body.appendChild(c);
   const vh=Math.max(innerHeight,600),vw=Math.max(innerWidth,400),dy=r.flyDir<0?-(Math.max(b.bottom,0)+vh*.3):(Math.max(vh-b.top,0)+vh*.3),dx=(Math.random()<.5?-1:1)*rnd(.25,.6)*vw;
@@ -1082,17 +1065,17 @@ function quake(){const w=document.querySelector('.wrap');if(!w||!w.animate)retur
 function koPop(r,ex){
   const d=document.createElement('div');d.className='gpop ko';d.textContent=`${r.name} KO!`;
   d.style.setProperty('--gx',(PX(ex.x)+S)+'px');d.style.setProperty('--gy',(ex.y<.5?FY(0)-S*.4:FY(1)-S*.9)+'px');d.style.setProperty('--gs',1.2);
-  fieldEl().appendChild(d);setTimeout(()=>d.remove(),1350);
+  worldEl().appendChild(d);setTimeout(()=>d.remove(),1350);
 }
 function goalPop(r){
   const g=fieldEl().querySelector('.goal');if(g){g.classList.remove('hit');void g.offsetWidth;g.classList.add('hit')}
   const d=document.createElement('div'),k=r.done;d.className='gpop'+(k<=3?' r'+k:'');d.textContent=k<=3?`${k}등 GOAL!`:`${k}등 골인`;
   d.style.setProperty('--gx',(PX(r.x)-S*.15)+'px');d.style.setProperty('--gy',(FY(r.y)-S*1.1)+'px');d.style.setProperty('--gs',k===1?1.7:k<=3?1.35:1);
-  fieldEl().appendChild(d);setTimeout(()=>d.remove(),1350);
+  worldEl().appendChild(d);setTimeout(()=>d.remove(),1350);
   fx('spark',r,1);if(k<=3){fx('pow',r,1);shake(k===1?380:220,k===1?6:4)}
 }
 function stealFx(thief,victim){
-  const k=thief.done,f=fieldEl(),fl=document.createElement('div');fl.className='flyflag';fl.innerHTML=svg('flag'+k,'')+`<b>${k}</b>`;f.appendChild(fl);
+  const k=thief.done,f=fieldEl(),fl=document.createElement('div');fl.className='flyflag';fl.innerHTML=svg('flag'+k,'')+`<b>${k}</b>`;worldEl().appendChild(fl);
   const sx=PX(victim.x)+S*.3,sy=FY(victim.y)-S*1.8,ex=PX(thief.x)+S*.3,ey=FY(thief.y)-S*1.8;
   fl.style.transform=`translate(${sx}px,${sy}px)`;
   setTimeout(()=>{fl.style.transform=`translate(${(sx+ex)/2}px,${Math.min(sy,ey)-90}px)`},20);
@@ -1112,13 +1095,13 @@ function mapShift(){
   if(k==='boxes'){OBJ.filter(o=>o.type==='box').forEach(o=>{o.x=rnd(.2,.85);o.y=rnd(.05,.95);o.back=0;o.el.style.visibility='visible'});feed('맵 변화! 아이템 상자가 새로 깔렸습니다')}
   // 지구온난화 균열: 가운데쯤 빙판 전체를 가르는 큰 틈. 3.5초 뒤 다시 언다
   if(k==='rift'||k==='pond'){f.classList.add('heat');setTimeout(()=>f.classList.remove('heat'),4500);if(k==='pond'){makePond(rnd(.3,.6));eventBanner('지구온난화!','빙판이 녹아 큰 연못','#FF6F2C');shake(500,7);slow(500)}}
-  if(k==='rift'){const x=rnd(.35,.7),wx=.07,el=document.createElement('div');el.className='rift';f.appendChild(el);
+  if(k==='rift'){const x=rnd(.35,.7),wx=.07,el=document.createElement('div');el.className='rift';worldEl().appendChild(el);
     const o={type:'rift',x,wx,until:G+3500,el,live:1};OBJ.push(o);placeBand(o);shake(500,8);slow(500);
     for(let i=0;i<4;i++)fx('splash',{x:x+wx/2-.02,y:rnd(.1,.9)},1);
     feed('지구온난화! 빙판 한가운데 거대한 균열이 생겼습니다');eventBanner('지구온난화!','빙판에 거대한 균열','#FF6F2C')}
   // 빙하 조각 구간: 조각을 밟고 건너다 미끄러지면 물에 빠진다. 4초 뒤 사라진다
   if(k==='floes'){const x=rnd(.3,.65),wx=.15,el=document.createElement('div');el.className='floes';
-    el.innerHTML=Array.from({length:6},(_,i)=>`<i style="top:${8+i*15}%"></i>`).join('');f.appendChild(el);
+    el.innerHTML=Array.from({length:6},(_,i)=>`<i style="top:${8+i*15}%"></i>`).join('');worldEl().appendChild(el);
     const o={type:'floe',x,wx,until:G+4000,el,live:1};OBJ.push(o);placeBand(o);shake(250,4);
     feed('빙판이 녹아 빙하 조각만 둥둥 떠 있습니다. 밟고 건너세요!');eventBanner('빙하 구간!','조각을 밟고 건너라','#4FB3E8')}
   // 빙판 기울어짐: 2.2초 동안 한쪽으로 쏠려 장외 위험
@@ -1145,8 +1128,8 @@ function ceremony(){
 }
 function stopCeremony(){cancelAnimationFrame(cer);const cv=$('cfx');if(cv)cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}
 function ranks(){
-  if(PB){const s=[...R].sort((a,b)=>b.sc-a.sc);   // 핀볼: 점수 순, 공을 다 잃은 펭귄은 흐리게
-    $('ranklist').innerHTML=s.map((r,i)=>`<li class="${r.ps==='out'?'out':''}"><b>${i+1}</b>${svg(r.look.k,'',r.look.c)}<span class="nm">${esc(r.name)}</span><i>${fmt(r.sc)}</i></li>`).join('');return}
+  if(PB){const s=[...R].sort((a,b)=>(a.done||999)-(b.done||999));   // 핀볼: 떨어진 순서대로 등수, 아직 판 위에 있으면 아래에
+    $('ranklist').innerHTML=s.map(r=>`<li><b>${r.done||'-'}</b>${svg(r.look.k,'',r.look.c)}<span class="nm">${esc(r.name)}</span><i>${r.done?'':r.ps==='play'?'판 위':'대기'}</i></li>`).join('');return}
   const key=r=>r.done?r.done:r.elim?1000-r.elim:100-r.x;   // 완주 → 달리는 중 → 탈락(늦게 탈락할수록 위)
   const s=[...R].sort((a,b)=>key(a)-key(b));
   $('ranklist').innerHTML=s.map((r,i)=>`<li class="${r.elim?'out':''}"><b>${r.elim?'X':r.done||i+1}</b>${svg(r.look.k,'',r.look.c)}${esc(r.name)}</li>`).join('');
@@ -1160,7 +1143,7 @@ t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=2500;nextShift=3200
     if(pinMode){swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=Infinity;nextShift=nextFocus=Infinity;hurried=true}
     if(!pinMode&&Math.random()<ROCKET_P){const rk=pick(R);rk.rocketWin=1;setState(rk,'rocket',1e9);rk.el.classList.add('rocket');
       R.forEach(o=>{if(o!==rk){setState(o,'down',1200);fx('dust',o,1)}});fx('pow',rk,1);shake(600,9);setTimeout(()=>slow(900),20);setTimeout(()=>feed(`${rk.name} 로켓 발사! 폭풍에 나머지가 모두 엎어졌습니다`)||eventBanner('로켓 발사!',`${rk.name} 혼자 날아갑니다`,'#E5484D'),50)}
-    feed('출발! 1·2·3등 깃발을 먼저 뽑는 펭귄은 누구일까요');
+    if(!pinMode)feed(`출발! 화면 밖으로 뒤처지면 장외, ${R.length-cutN()}명만 살아남습니다`);
     if(pinMode)pbStart();
 }
 function start(){
@@ -1179,12 +1162,12 @@ function finish(){
   const n=R.length,k=+$('topn').value,back=$('mode').value==='back';
   const sorted=[...R].sort((a,b)=>a.done-b.done),win=r=>back?r.done>n-k:r.done<=k;
   $('rh').textContent='시상식 · 당첨: '+sorted.filter(win).map(r=>r.name).join(', ');
-  $('rs').textContent=(back?'뒤에서 ':'앞에서 ')+k+'명 · 전체 '+n+'명 '+(PB?'점수 순서':'도착 순서');
+  $('rs').textContent=(back?'뒤에서 ':'앞에서 ')+k+'명 · 전체 '+n+'명 '+(PB?'떨어진 순서':'도착 순서');
   const top=sorted.slice(0,3);
   $('podium').innerHTML=[1,0,2].filter(i=>top[i]).map(i=>{const r=top[i];return `<div class="pd p${i+1}${win(r)?' win':''}"><div class="who">${svg('flag'+(i+1),'pf')}${svg(r.look.k,'pc',r.look.c)}<span class="pn">${esc(r.name)}</span></div><div class="blk"><b>${i+1}</b></div></div>`}).join('');
   const fans=sorted.slice(3).map(r=>svg(r.look.k,'',r.look.c));while(fans.length<12)fans.push(svg('아델리펭귄','',pick(COLORS)));
   $('crowd').innerHTML=fans.join('');
-  $('rl').innerHTML=sorted.slice(3).map(r=>`<li class="${win(r)?'win':''}"><b>${r.done}등</b>${svg(r.look.k,'',r.look.c)}<span>${esc(r.name)}${PB?' · '+fmt(r.sc)+'점':''}</span></li>`).join('');
+  $('rl').innerHTML=sorted.slice(3).map(r=>`<li class="${win(r)?'win':''}"><b>${r.done}등</b>${svg(r.look.k,'',r.look.c)}<span>${esc(r.name)}</span></li>`).join('');
   $('result').hidden=false;$('result').scrollIntoView({behavior:'smooth',block:'nearest'});if(PF){PF.clear();PF.step(0)}fieldEl().style.transform='';ceremony();
 }
 
@@ -1196,7 +1179,8 @@ $('copy').onclick=e=>{
   setTimeout(()=>b.textContent='순서 복사',1500);
 };
 $('gmode').onchange=()=>{if(!racing)build()};
-addEventListener('resize',()=>{if(PB){if(!racing&&fieldEl().clientWidth!==FW)build();return}FW=fieldEl().clientWidth||FW;R.forEach(place);OBJ.forEach(o=>o.type==='pond'?placePond(o):o.type==='rift'||o.type==='floe'?placeBand(o):putObj(o))});
+addEventListener('resize',()=>{if(PB){if(!racing&&fieldEl().clientWidth!==FW)build();return}if(!racing){if(fieldEl().clientWidth!==VW)build();return}
+  VW=fieldEl().clientWidth||VW;FW=Math.round(VW*TRACK_L);worldEl().style.width=FW+'px';document.querySelectorAll('.km').forEach(k=>k.style.left=(PX(+k.dataset.x)+S/2)+'px');R.forEach(place);cam(1);OBJ.forEach(o=>o.type==='pond'?placePond(o):o.type==='rift'||o.type==='floe'?placeBand(o):putObj(o))});
 $('logo').innerHTML=svg('아델리펭귄','',COLORS[0]);sky();renderChips();
 build();
 </script>
