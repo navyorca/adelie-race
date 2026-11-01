@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>아델리 펭귄 레이스</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -51,6 +52,10 @@ button{font:inherit;cursor:pointer}
 #go{background:var(--navy);color:var(--bg);border:0;border-radius:0;padding:11px 30px;font-family:var(--dot);font-size:22px;box-shadow:4px 4px 0 var(--blue);margin-left:auto}
 #go:active{transform:translate(4px,4px);box-shadow:none}
 #go:disabled{opacity:.45;cursor:not-allowed}
+/* 261101 게임 방법(네오 "레이스 설명이 필요하다"): 고른 게임에 맞춰 바뀜 */
+.howto summary{font-weight:700;color:var(--navy);cursor:pointer}
+.howto ul{margin:6px 0 0;padding-left:1.2em;line-height:1.5}
+.howto li b{color:var(--navy)}
 
 .game{border:3px solid var(--hud);background:var(--ice);position:relative;overflow:hidden}
 .hud{background:var(--hud);color:var(--hudInk);font-size:18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 26px;padding:8px 12px;border-bottom:3px solid #FFE58A}
@@ -186,7 +191,7 @@ button{font:inherit;cursor:pointer}
 .rank li svg{height:20px;width:auto;flex:0 0 auto}
 .rank li b{font-family:var(--dot);font-weight:400;color:#9CC3FF;min-width:1.6em}
 .rank li.out{opacity:.5}
-@media(max-width:640px){.arena{flex-direction:column}.field{flex:0 0 auto}.game.pinm .rank{width:auto}.rank{width:auto}.rank ol{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
+@media(max-width:640px){#who{flex:1 1 100%}.arena{flex-direction:column}.field{flex:0 0 auto}.game.pinm .rank{width:auto}.rank{width:auto}.rank ol{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 .cd{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.3);font-family:var(--dot);font-size:22px;color:#00007F;pointer-events:none;background:#FFFFFF;border:3px solid #00007F;box-shadow:4px 4px 0 #1F4FD8;padding:10px 26px;z-index:9000}
 .cd.pop{animation:cdpop .35s steps(4)}
 @keyframes cdpop{0%{transform:translate(-50%,-50%) scale(2.4)}100%{transform:translate(-50%,-50%) scale(1.3)}}
@@ -309,6 +314,7 @@ button{font:inherit;cursor:pointer}
     <div><label for="gmode">게임</label><select id="gmode"><option value="race">레이스</option><option value="pin">핀볼</option></select></div>
     <button id="go">출발</button>
   </div>
+  <details class="howto" open><summary>게임 방법</summary><ul id="howto"></ul></details>
 
   <div class="game">
     <div class="hud"><div class="hb"><small>TIME</small><b id="time">0.0</b></div><div class="hb"><small>REST</small><b id="rest">1000m</b></div><div class="hb"><small>남은 펭귄</small><b id="left">0</b></div><div class="hb"><small id="winlbl">지금 당첨권</small><b id="wins">-</b></div><button class="ff" id="ff">빨리감기 ▶▶</button>
@@ -429,7 +435,9 @@ function build(){
   flagsLeft=[1,2,3];
   [1,2,3].forEach((k,i)=>{const p=document.createElement('div');p.className='pole';p.id='pole'+k;
     p.style.top=(EDGE+8+i*((FH-2*EDGE-40)/2))+'px';p.innerHTML=svg('flag'+k,'')+`<b>${k}</b>`;worldEl().appendChild(p)});
-  const order=shuffle(names.slice());const cs=cast(order);   // 경주 내부 순서도 명단 순서와 무관하게 섞는다OBJ=[];FEED=[];$('feed').innerHTML='<p>출발선에 모였습니다. 아이템 상자와 얼음 구멍을 조심하세요.</p>';
+  const order=shuffle(names.slice());const cs=cast(order);   // 경주 내부 순서도 명단 순서와 무관하게 섞는다
+  OBJ=[];   // 261101 주석 뒤에 붙어 있어 지난 판의 구멍·상자가 안 보이는 채로 남아 판정하던 것을 고침
+  FEED=[];$('feed').innerHTML='<p>출발선에 모였습니다. 아이템 상자와 얼음 구멍을 조심하세요.</p>';
   const lanes=shuffle([...Array(n).keys()]);   // 출발 칸은 명단 순서와 무관하게 섞는다
   R=order.map((name,i)=>{
     const el=document.createElement('div');el.className='runner';el.style.height=S*SZ(cs[i].k)+'px';
@@ -716,9 +724,9 @@ function tick(now){
   $('left').textContent=R.length-order-elimCount;
   if((G|0)%200<40)ranks();
   showWins();
-  // 결과 확정 = 스킵: 앞에서 모드는 5명 도착 뒤 1~3등 고정(깃발 뺏기는 5번째 도착까지만), 뒤에서 모드는 탈락자가 당첨 수만큼 나오면 고정
+  // 결과 확정 = 스킵(261101 네오 "순위 정해지면 바로 시상식"): 앞에서 모드는 당첨 수만큼 도착하면, 뒤에서 모드는 탈락자가 당첨 수만큼 나오면 고정
   const k=+$('topn').value,back=$('mode').value==='back';
-  if(order+elimCount<R.length&&(back?elimCount>=k:order>=5)){
+  if(order+elimCount<R.length&&(back?elimCount>=k:order>=k)){
     R.filter(alive).sort((a,b)=>b.x-a.x).forEach(r=>{r.done=++order;setState(r,'done',0);r.el.classList.remove('walk','star','boost')});
     feed('당첨 확정! 나머지 순위는 지금 위치로 정합니다');eventBanner('당첨 확정!','결과로 바로 갑니다','#2BB673');ranks();showWins();
     setTimeout(finish,1200);return}
@@ -782,7 +790,7 @@ function tetHop(r,v,flip){r.hopU=G+460;r.hopV=v;r.hopF=flip}
 let pinMode=false,PB=null;
 // 261031 네오 "점수모으기 말고 아래로 떨어지는 순서로, 모션 과해 산만, 너무 오래 걸림": 배수구에 먼저 떨어진 순서가 등수
 // 플리퍼는 5초까지 잘 치다가 11초에 완전히 멈춘다(그 뒤 전원 낙하). 17초가 지나도 남은 펭귄은 아래쪽에 있는 순서로 등수
-const PBW=480,PBH=800,BR=14,PB_LIMIT=17000,PB_FADE0=5000,PB_FADE1=11000;
+const PBW=480,PBH=800,BR=14,PB_LIMIT=13000,PB_FADE0=2500,PB_FADE1=8000;   // 261101 시작이 지루함(네오) → 17·5·11초에서 줄임
 const PBUMP=[[160,205],[280,205],[220,285]],PLANE=[130,190,250,310],PDROP=[150,190,230],PSAU=[310,385];
 const FLEN=66,FDOWN=.5,FUP=-.4;
 const fmt=n=>n.toLocaleString('ko-KR');
@@ -889,9 +897,11 @@ function pbBuild(){
   $('feed').innerHTML='<p>맨 아래 바다(배수구)로 먼저 떨어지는 펭귄이 1등입니다.</p>';pbDmd();ranks();pbCam();
 }
 function pbStart(){
-  PB.nextL=G+300;PB.t0=G;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
+  PB.nextL=G+60;PB.t0=G;PB.limit=G+PB_LIMIT;R.forEach(r=>r.el.classList.remove('walk'));
   feed('발사! 바다로 먼저 떨어진 순서대로 1등, 2등… 플리퍼는 점점 힘이 빠집니다');
 }
+// 261101 첫 출발은 플런저 한 줄 발사 대신 판 위쪽에서 한꺼번에 쏟아진다(시작부터 범퍼에 부딪힘)
+function pbPour(r){Object.assign(r,{ps:'play',x:rnd(80,360),y:rnd(110,150),vx:rnd(-320,320),vy:rnd(0,250),launchAt:G,still:0});r.el.style.display=''}
 function pbLaunch(r){Object.assign(r,{ps:'play',x:440,y:770,vx:0,vy:-rnd(1550,1800),launchAt:G,still:0});r.el.style.display=''}
 const pbX=x=>PB.ox+x*PB.k,pbY=y=>PB.oy+y*PB.k;
 function pbFx(kind,x,y,big){if(!PF)return;const [cols,n,sp,g,sz,life,up]=FXP[kind];PF.add(pbX(x),pbY(y),n*(big?2:1),cols,sp*(big?1.3:1),g,sz,life,up)}
@@ -957,7 +967,7 @@ function pbDraw(){
 function pbTick(now){
   const dt=Math.min(.05,(now-last)/1000)*turbo*(now<slowUntil&&turbo===1?.35:1);last=now;G+=dt*1000;
   if(!PB.over){
-    if(PB.Q.length&&G>PB.nextL){pbLaunch(PB.Q.shift());PB.nextL=G+Math.max(120,Math.min(300,2400/R.length))}
+    if(PB.Q.length&&G>PB.nextL){pbPour(PB.Q.shift());PB.nextL=G+Math.max(30,Math.min(90,900/R.length))}
     const n=Math.min(120,Math.max(1,Math.ceil(dt*720))),h=dt/n;for(let i=0;i<n;i++)pbStep(h);
     // 자동 플리퍼: 공이 플리퍼 위로 내려오면 친다. 칠 확률은 시간이 갈수록 줄어든다
     const pw=pbPow();PB.fl.forEach((q,i)=>{let want=0;
@@ -970,7 +980,7 @@ function pbTick(now){
       if(b.y>PBH+BR&&b.x<420){pbDrain(b);continue}
       if(b.x>420&&b.y>740&&Math.abs(b.vy)<60){pbLaunch(b);continue}   // 플런저 길로 굴러 내려오면 다시 쏜다
       b.still=Math.hypot(b.vx,b.vy)<25?b.still+dt:0;if(b.still>1.2){b.still=0;b.vy=-500;b.vx=rnd(-200,200)}}   // 어딘가 끼면 톡 쳐 준다
-    if(G>PB.limit||R.every(r=>r.ps==='out'))pbEnd();
+    if(G>PB.limit||R.every(r=>r.ps==='out')||pbDecided())pbEnd();
   }
   pbDraw();if(PF)PF.step(Math.min(.05,dt));
   $('time').textContent=((now-t0)/1000).toFixed(1);$('rest').textContent=PB.n+'명';
@@ -979,9 +989,11 @@ function pbTick(now){
   if(now>PB.rkAt){PB.rkAt=now+250;ranks();showWins()}
   if(racing)raf=requestAnimationFrame(tick);
 }
+// 261101 당첨자가 정해지면 나머지는 기다리지 않는다(앞에서 = k명 떨어짐, 뒤에서 = 판 위에 k명만 남음)
+function pbDecided(){const k=+$('topn').value;return $('mode').value==='back'?PB.n>=R.length-k:PB.n>=k}
 function pbEnd(){
   PB.over=1;R.filter(r=>!r.done).sort((a,b)=>(b.y||0)-(a.y||0)).forEach(r=>{r.done=++PB.n;r.ps='out'});   // 시간이 다 되면 아래쪽에 있는 순서로
-  R.forEach(r=>r.elim=0);ranks();showWins();pbDmd();feed(`끝! 1등 ${R.find(r=>r.done===1).name}`);
+  R.forEach(r=>r.elim=0);ranks();showWins();pbDmd();feed(`끝! 1등 ${R.find(r=>r.done===1).name}`);eventBanner('당첨 확정!','시상식으로 갑니다','#2BB673');
   setTimeout(()=>{cancelAnimationFrame(raf);finish()},1600);
 }
 function startPin(){
@@ -1179,7 +1191,14 @@ $('copy').onclick=e=>{
   navigator.clipboard.writeText(txt).then(()=>b.textContent='복사했습니다').catch(()=>b.textContent='복사가 막혀 있습니다');
   setTimeout(()=>b.textContent='순서 복사',1500);
 };
-$('gmode').onchange=()=>{if(!racing)build()};
+const HOW={
+  race:['<b>목표</b> 오른쪽 결승선에 먼저 도착. 도착 순서가 등수','<b>깃발 뺏기</b> 뒤따라 들어온 펭귄이 앞 등수 깃발을 빼앗기도 함',
+    '<b>장외</b> 화면 왼쪽 밖으로 뒤처지거나 위·아래 바다로 밀려나면 탈락(참가자 절반까지)','<b>상자</b> 바나나·물고기·별 같은 아이템 무작위. <b>얼음 구멍</b> 잠깐 빠짐',
+    '<b>이벤트</b> 얼음 깨짐·깃발 도망·핀볼·테트리스 등이 무작위로 끼어듦','<b>당첨</b> 앞에서 = 먼저 도착한 순서, 뒤에서 = 먼저 탈락한 순서. 당첨자가 정해지면 바로 시상식'],
+  pin:['<b>목표</b> 펭귄이 공. 맨 아래 바다로 먼저 떨어진 순서가 등수','<b>플리퍼</b> 처음엔 잘 받아 치다가 점점 힘이 빠짐(13초 안에 끝)',
+    '<b>당첨</b> 앞에서 = 먼저 떨어진 펭귄, 뒤에서 = 판 위에 끝까지 남은 펭귄. 당첨자가 정해지면 바로 시상식']};
+function howto(){$('howto').innerHTML=HOW[$('gmode').value].map(s=>`<li>${s}</li>`).join('')}
+$('gmode').onchange=()=>{howto();if(!racing)build()};howto();
 addEventListener('resize',()=>{if(PB){if(!racing&&fieldEl().clientWidth!==FW)build();return}if(!racing){if(fieldEl().clientWidth!==VW)build();return}
   VW=fieldEl().clientWidth||VW;FW=Math.round(VW*TRACK_L);worldEl().style.width=FW+'px';document.querySelectorAll('.km').forEach(k=>k.style.left=(PX(+k.dataset.x)+S/2)+'px');R.forEach(place);cam(1);OBJ.forEach(o=>o.type==='pond'?placePond(o):o.type==='rift'||o.type==='floe'?placeBand(o):putObj(o))});
 $('logo').innerHTML=svg('아델리펭귄','',COLORS[0]);sky();renderChips();
