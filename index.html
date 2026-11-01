@@ -349,6 +349,7 @@ let slowUntil=0,turbo=1;   // 261007 빨리감기 ×3
 const slow=(ms=700)=>{slowUntil=performance.now()+ms;fieldEl().classList.add('slowmo');setTimeout(()=>fieldEl().classList.remove('slowmo'),ms)};   // 큰 장면은 0.35배 느린 화면
 const ROWS={x:9,q:7,dots:2};
 const vbH=k=>+SP[k==='아델리펭귄'?'adelie':k].vb.split(' ')[3];
+const SZ=k=>{const [,,w,h]=SP[k==='아델리펭귄'?'adelie':k].vb.split(' ').map(Number);return Math.min(1,Math.sqrt(.75*h/w))};   // 261101 넓적한 애들(웨델·비비·폴라곰)도 서 있는 펭귄과 면적이 비슷하게(네오 "애들 사이즈 비슷하게")
 const spH=()=>(laneH-4)*.92;
 const u0=()=>spH()/38; // 펭귄 도트 한 칸 크기, 함정·물고기도 같은 칸 크기
 const holeW=()=>22*u0();
@@ -431,11 +432,11 @@ function build(){
   const order=shuffle(names.slice());const cs=cast(order);   // 경주 내부 순서도 명단 순서와 무관하게 섞는다OBJ=[];FEED=[];$('feed').innerHTML='<p>출발선에 모였습니다. 아이템 상자와 얼음 구멍을 조심하세요.</p>';
   const lanes=shuffle([...Array(n).keys()]);   // 출발 칸은 명단 순서와 무관하게 섞는다
   R=order.map((name,i)=>{
-    const el=document.createElement('div');el.className='runner';el.style.height=S+'px';
+    const el=document.createElement('div');el.className='runner';el.style.height=S*SZ(cs[i].k)+'px';
     el.style.setProperty('--id',rnd(.6,1.1).toFixed(2)+'s');el.style.setProperty('--dl',(-rnd(0,1)).toFixed(2)+'s');
     el.innerHTML=`<div class="bd">${svg(cs[i].k,'sp',cs[i].c)}<span class="ic"></span></div><span class="flag"></span><span class="tag">${esc(name)}</span>`;
     worldEl().appendChild(el);
-    return{name,look:cs[i],el,bd:el.querySelector('.bd'),ic:el.querySelector('.ic'),outs:0,surge:0,fl:el.querySelector('.flag'),u:S/vbH(cs[i].k),
+    return{name,look:cs[i],el,bd:el.querySelector('.bd'),ic:el.querySelector('.ic'),outs:0,surge:0,fl:el.querySelector('.flag'),bh:S*SZ(cs[i].k),u:S*SZ(cs[i].k)/vbH(cs[i].k),
       x:rnd(0,.05),y:.08+.84*(n>1?lanes[i]/(n-1):.5),ty:0,ky:0,v:0,tv:0,next:0,steer:0,state:'walk',until:0,rot:0,z:0,done:0,item:'',useAt:0,star:0,boost:0,icon:'',fade:1};
   });
   R.forEach(r=>r.ty=r.y);
@@ -490,7 +491,7 @@ function skyDrop(){const c=R.filter(alive);if(!c.length)return;
     const sh=mk('','dropsh');sh.style.width=dotW(kind)*.9+'px';sh.style.transform=`translate(${PX(x)+S/2-dotW(kind)*.45}px,${FY(y)-4}px)`;
     addObj('drop',x,y,{kind,land:G+900,sh})},i*260)}
 function place(r){
-  r.el.style.transform=`translate(${PX(r.x)}px,${FY(r.y)-S-r.z}px)`;r.bd.style.transform=`rotate(${r.rot}deg) scale(${r.sc||1})`;r.el.style.zIndex=Math.round(FY(r.y))+(r.z>0?400:0);r.el.style.opacity=r.fade;
+  r.el.style.transform=`translate(${PX(r.x)+(S-r.bh)/2}px,${FY(r.y)-r.bh-r.z}px)`;r.bd.style.transform=`rotate(${r.rot}deg) scale(${r.sc||1})`;r.el.style.zIndex=Math.round(FY(r.y))+(r.z>0?400:0);r.el.style.opacity=r.fade;
 }
 function cam(snap){
   const w=fieldEl().querySelector('.world');if(!w||PB)return;
@@ -878,8 +879,8 @@ function pbBuild(){
   PB.vp=f.querySelector('.pbv');PB.wd=f.querySelector('.pbw');
   FH=VH;f.style.height=FH+'px';pbDmd();
   const hp=BR*2.7*k;
-  for(const r of R){PB.wd.appendChild(r.el);r.el.classList.remove('walk','win');r.el.style.display='none';r.el.style.height=hp+'px';r.el.style.opacity=1;r.fl.style.display='none';
-    const [,,vw,vh]=SP[r.look.k==='아델리펭귄'?'adelie':r.look.k].vb.split(' ').map(Number);r.hw=hp*vw/vh/2;r.hh=hp/2;
+  for(const r of R){PB.wd.appendChild(r.el);r.el.classList.remove('walk','win');r.el.style.display='none';r.el.style.height=hp*SZ(r.look.k)+'px';r.el.style.opacity=1;r.fl.style.display='none';
+    const [,,vw,vh]=SP[r.look.k==='아델리펭귄'?'adelie':r.look.k].vb.split(' ').map(Number);r.hw=hp*SZ(r.look.k)*vw/vh/2;r.hh=hp*SZ(r.look.k)/2;
     Object.assign(r,{ps:'wait',rot:0,fz:[0,0],still:0,done:0,elim:0})}
   R.forEach((r,i)=>r.dot=['#FF9F1C','#2F6BFF','#2BB673','#C77DFF','#FF7AA2','#00B3C7','#F7B500','#E5484D'][i%8]);
   PB.Q=shuffle(R.slice());
