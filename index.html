@@ -218,6 +218,19 @@ button{font:inherit;cursor:pointer}
 .evf{position:absolute;inset:0;z-index:4900;pointer-events:none;background:#FFFFFF;opacity:.3;animation:evf .25s steps(3) forwards}
 @keyframes evf{to{opacity:0}}
 .cd[hidden]{display:none}
+.lineup{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8999;background:#FFFFFF;border:3px solid #00007F;box-shadow:6px 6px 0 #1F4FD8;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;cursor:pointer}
+.lineup[hidden]{display:none}
+.lineup h3{margin:0;background:#0A1A5C;color:#FFE58A;font-family:var(--dot);font-size:18px;padding:8px 12px;display:flex;justify-content:space-between;gap:8px}
+.lineup h3 small{color:#FFFFFF;font-size:13px}
+.lineup table{width:100%;border-collapse:collapse;font-size:16px;color:#0A1A5C}
+.lineup th{background:#DDE6FF;font-size:13px;padding:4px 6px;text-align:left}
+.lineup td{padding:4px 6px;border-top:1px solid #DDE6FF;white-space:nowrap}
+.lineup td.nm{max-width:9em;overflow:hidden;text-overflow:ellipsis}
+.lineup td.mk{color:#E5484D;font-weight:700;text-align:center}
+.lineup td.od{text-align:right;font-variant-numeric:tabular-nums}
+.lineup p{margin:0;padding:6px 12px;font-size:13px;color:#4A5A8A;text-align:right}
+.result .upset{color:#E5484D;font-weight:700;font-size:18px;margin:-6px 0 12px}
+.result .upset:empty{display:none}
 
 .result h2{font-family:var(--dot);font-weight:400;font-size:22px;margin:0 0 4px;color:var(--navy)}
 .result .sub{color:var(--dim);font-size:18px;margin:0 0 12px}
@@ -332,12 +345,12 @@ button{font:inherit;cursor:pointer}
     <div class="sky" id="sky"></div>
     <div class="feed" id="feed" aria-live="polite"></div>
     <div class="arena"><div class="field" id="field"></div><div class="rank"><h3>RANK</h3><ol id="ranklist"></ol></div></div>
-    <div class="cd" id="cd" hidden></div>
+    <div class="cd" id="cd" hidden></div><div class="lineup" id="lineup" hidden></div>
   </div>
 
   <section class="result" id="result" hidden>
     <h2 id="rh"></h2>
-    <p class="sub" id="rs"></p>
+    <p class="sub" id="rs"></p><p class="upset" id="upset"></p>
     <div class="stage"><canvas class="cfx" id="cfx"></canvas><div class="beam l"></div><div class="beam c"></div><div class="beam r"></div><div class="congrats">축하합니다!</div><div class="podium" id="podium"></div><div class="crowd" id="crowd"></div></div>
     <ol id="rl"></ol>
     <div class="row">
@@ -462,6 +475,7 @@ function build(){
       x:rnd(0,.05),y:.08+.84*(n>1?lanes[i]/(n-1):.5),ty:0,ky:0,v:0,tv:0,next:0,steer:0,state:'walk',until:0,rot:0,z:0,done:0,item:'',useAt:0,star:0,boost:0,icon:'',fade:1};
   });
   R.forEach(r=>r.ty=r.y);
+  {const ks=Object.keys(STY),pops=shuffle([...Array(R.length).keys()]);R.forEach((r,i)=>{r.no=i+1;r.sty=pick(ks);r.pop=pops[i]+1;r.odds=Math.min(99.9,1.6*Math.pow(1.5,r.pop-1)*rnd(.9,1.1)).toFixed(1)})}
   // 얼음 구멍 5개, 아이템 상자 두 줄
   // 구멍 6개·상자 n×0.6개를 서로 60px·40px 이상 떨어뜨려 빙판 전체에 흩는다
   const spots=[];
@@ -536,7 +550,25 @@ function setIcon(r,k){if(r.icon===k)return;r.icon=k;r.ic.style.display=k?'block'
 function setState(r,s,ms){r.rot%=360;if(s!=='down'&&s!=='elim')r.faint=0;r.el.classList.toggle('ko',(s==='down'||s==='elim')&&!!r.faint);r.dur=ms;r.state=s;r.until=G+ms;
   if(s==='hit'||s==='down')r.pose=r.nextPose||pick(['front','back','spin']);if(s==='elim')r.pose=pick(['front','back']);r.nextPose='';if(s==='jump')r.flip=Math.random()<.3;r.el.classList.toggle('swim',s==='swim');r.el.classList.toggle('walk',s==='walk'||s==='jump');
   setIcon(r,{slip:'q',hole:'x',hit:'x',climb:'dots',down:'x',eat:'dots'}[s]||'')}
-const alive=r=>!r.done&&!r.elim;   // 완주도 탈락도 아닌 펭귄
+const alive=r=>!r.done&&!r.elim;
+// 261115 각질: [이름, 전반(0~45%) 배율, 후반(65%~) 배율]. 평균은 비슷해 유불리 없음
+const STY={nige:['도주',1.22,.84],senko:['선행',1.08,.94],sashi:['차분',.95,1.07],oikomi:['추입',.84,1.24]};
+const styMul=r=>{const q=STY[r.sty];return !q?1:r.x<.45?q[1]:r.x>.65?q[2]:1};
+const MARK=p=>p===1?'◎':p===2?'○':p===3?'▲':p<=5?'△':'';
+let LEAD=null,leadCd=0,ms5=0,ms7=0;
+function caster(){   // 경마 중계 멘트: 중간 지점·마지막 직선·선두 교체·추입
+  const run=R.filter(alive);if(!run.length)return;const L=run.reduce((a,b)=>b.x>a.x?b:a);
+  if(!ms5&&L.x>.5){ms5=1;feed(`중간 지점 통과! 선두는 ${L.name}`)}
+  if(!ms7&&L.x>.72){ms7=1;const s2=run.filter(r=>r!==L).sort((a,b)=>b.x-a.x)[0];feed(`마지막 직선! ${L.name} 선두${s2?`, ${s2.name} 추격`:''}`)}
+  if(LEAD&&L!==LEAD&&G>leadCd&&G>1500&&L.x-LEAD.x<.2){leadCd=G+1800;feed(`선두 교체! ${jo(L.name,'이','가')} 앞으로 나섭니다`)}
+  LEAD=L;
+  run.forEach(r=>{if(r.sty==='oikomi'&&!r.oiCall&&r.x>.65){r.oiCall=1;if(r!==L)feed(`${r.name} 추입 시작! 뒤에서 무섭게 올라옵니다`)}});
+}
+function lineup(done){   // 출전표: 번호·이름·각질·예상·단승. 2.8초 뒤 또는 누르면 출발
+  const el=$('lineup'),rows=[...R].sort((a,b)=>a.no-b.no);
+  el.innerHTML=`<h3>출전표<small>아델리 월드컵 · 빙판 1000m · ${R.length}마리</small></h3><table><tr><th>번</th><th>이름</th><th>각질</th><th>예상</th><th>단승</th></tr>${rows.map(r=>`<tr><td>${r.no}</td><td class="nm">${esc(r.name)}</td><td>${STY[r.sty][0]}</td><td class="mk">${MARK(r.pop)}</td><td class="od">${r.odds}배</td></tr>`).join('')}</table><p>예상·배당은 재미용 · 결과와 무관 · 누르면 바로 출발</p>`;
+  el.hidden=false;let fired=0;const go=()=>{if(fired)return;fired=1;el.hidden=true;el.onclick=null;done()};el.onclick=go;setTimeout(go,2800);
+}   // 완주도 탈락도 아닌 펭귄
 let elimCount=0;
 const free=r=>alive(r)&&(r.state==='walk'||r.state==='jump');
 function stun(r,s,ms,why){if(!alive(r)||r.star>G||r.state==='down')return false;setState(r,s,ms);if(why){feed(why);if(/물고기|바나나|돌/.test(why)){pop(r,'아야!','#E5484D');beep('hit')}}return true}
@@ -564,7 +596,7 @@ function tick(now){
   if(PB){pbTick(now);return}
   const dt=Math.min(.05,(now-last)/1000)*SPD*turbo*(now<slowUntil&&turbo===1?.35:1);last=now;G+=dt*1000;
   RS=shuffle(R.slice());
-  let order=R.filter(r=>r.done).length;
+  let order=R.filter(r=>r.done).length;caster();
   if(G>swimAt){swimAt=Infinity;swimEnd=G+2600;fieldEl().classList.add('flood');R.forEach(r=>{if(alive(r)&&r.state!=='rocket'){setState(r,'swim',2600);fx('splash',r,1)}});feed('쩌적! 얼음이 깨졌습니다. 모두 수영합니다');eventBanner('얼음이 깨졌다!','모두 수영합니다','#3F6CD8')}
   if(swimEnd&&G>swimEnd){swimEnd=0;fieldEl().classList.remove('flood');feed('얼음이 다시 얼었습니다. 달리기 재개!')}
   for(const r of RS){
@@ -597,7 +629,7 @@ function tick(now){
     }
     if(r.boost<G)r.surge=0;
     const s=r.state,stopped=s==='hole'||s==='climb'||s==='down'||s==='hit'||s==='eat';
-    let target=r.tv*hurryMul;if(r.boost>G)target=r.surge?.42:.32;if(r.giant>G)target=.17;if(r.star>G)target=.28;if(s==='slip'||stopped)target=0;if(s==='swim')target=r.tv*.35;
+    let target=r.tv*hurryMul*styMul(r);if(r.boost>G)target=r.surge?.42:.32;if(r.giant>G)target=.17;if(r.star>G)target=.28;if(s==='slip'||stopped)target=0;if(s==='swim')target=r.tv*.35;
     r.v=stopped?0:r.v+(target-r.v)*Math.min(1,dt*5);
     if(s!=='down'&&s!=='hole'&&s!=='climb'){r.y+=(r.ty-r.y)*Math.min(1,dt*3.6)+r.ky*dt}
     r.ky*=Math.pow(.04,dt);
@@ -1199,7 +1231,7 @@ function ranks(){
 function launch(t){
 t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=3500;nextShift=4500;pinMode=!!PB;
     R.forEach(r=>{r.tv=r.v=rnd(.04,.14);r.steer=rnd(300,900);setState(r,'walk',0)});
-    swimAt=Math.random()<SWIM_P?rnd(1500,3500):Infinity;swimEnd=0;fleeing=false;fleeAt=Math.random()<FLEE_P?rnd(2200,3600):Infinity;pinning=false;pinAt=Math.random()<PIN_P?rnd(1200,2400):Infinity;tetris=false;TP=[];TCOL=[];tetAt=Math.random()<TET_P?rnd(1800,3400):Infinity;giantAt=Math.random()<GIANT_P?rnd(2000,6000):Infinity;dropAt=Math.random()<DROP_P?rnd(2500,5500):Infinity;
+    swimAt=Math.random()<SWIM_P?rnd(1500,3500):Infinity;swimEnd=0;fleeing=false;fleeAt=Math.random()<FLEE_P?rnd(2200,3600):Infinity;LEAD=null;leadCd=0;ms5=ms7=0;R.forEach(r=>r.oiCall=0);pinning=false;pinAt=Math.random()<PIN_P?rnd(1200,2400):Infinity;tetris=false;TP=[];TCOL=[];tetAt=Math.random()<TET_P?rnd(1800,3400):Infinity;giantAt=Math.random()<GIANT_P?rnd(2000,6000):Infinity;dropAt=Math.random()<DROP_P?rnd(2500,5500):Infinity;
     // 261115 큰 이벤트는 한 판에 2개까지, 1.8~2.8초·4.8~6.2초에 하나씩(네오 피드백 "조건 단순히")
     swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=heatAt=tiltAt=Infinity;tense=false;tenseN=0;tenseCd=0;nextBeat=0;photo=false;document.querySelector('.arena').classList.remove('tense');
     const EVQ=shuffle(['swim','flee','pin','tet','giant','drop','heat','tilt','rocket']).slice(0,2);
@@ -1212,6 +1244,9 @@ t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=3500;nextShift=4500
 }
 function start(){
   if(racing||names.length<2)return;stopCeremony();build();racing=true;renderChips();
+  if(!PB&&$('gmode').value==='race')lineup(count);else count();
+}
+function count(){
   const cd=$('cd');cd.hidden=false;let c=3;cd.textContent=c;const pop=()=>{cd.classList.remove('pop');void cd.offsetWidth;cd.classList.add('pop')};pop();
   const iv=setInterval(()=>{c--;if(c>0){cd.textContent=c;pop();return}
     clearInterval(iv);cd.textContent='출발!';pop();setTimeout(()=>cd.hidden=true,600);
@@ -1227,6 +1262,8 @@ function finish(){
   const sorted=[...R].sort((a,b)=>a.done-b.done),win=r=>back?r.done>n-k:r.done<=k;
   $('rh').textContent='시상식 · 당첨: '+sorted.filter(win).map(r=>r.name).join(', ');
   $('rs').textContent=(back?'뒤에서 ':'앞에서 ')+k+'명 · 전체 '+n+'명 '+(PB?'떨어진 순서':'도착 순서');
+  {const w1=sorted[0],up=$('upset');up.textContent='';
+   if(!PB&&w1&&w1.pop){up.textContent=w1.pop===1?`인기 1위 ${w1.name} 그대로 우승 · 단승 ${w1.odds}배`:w1.pop>=Math.max(3,Math.ceil(n/2))?`대이변! 인기 ${w1.pop}위 ${w1.name} 우승 · 단승 ${w1.odds}배`:`인기 ${w1.pop}위 ${w1.name} 우승 · 단승 ${w1.odds}배`}}
   const top=sorted.slice(0,3);
   $('podium').innerHTML=[1,0,2].filter(i=>top[i]).map(i=>{const r=top[i];return `<div class="pd p${i+1}${win(r)?' win':''}"><div class="who">${svg('flag'+(i+1),'pf')}${svg(r.look.k,'pc',r.look.c)}<span class="pn">${esc(r.name)}</span></div><div class="blk"><b>${i+1}</b></div></div>`}).join('');
   const fans=sorted.slice(3).map(r=>svg(r.look.k,'',r.look.c));while(fans.length<12)fans.push(svg('아델리펭귄','',pick(COLORS)));
