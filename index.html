@@ -199,12 +199,22 @@ button{font:inherit;cursor:pointer}
 .arena{position:relative}
 .evb{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:5000;pointer-events:none;padding:4px 16px;white-space:nowrap;text-align:center;color:#FFFFFF;   /* 261002 화면 가리지 않게 위쪽 작은 띠로 */
   background:repeating-linear-gradient(-45deg,var(--ec) 0 10px,#0A1A5C 10px 20px);background-size:28px 28px;border:3px solid #FFFFFF;box-shadow:3px 3px 0 #0A1A5C;
-  animation:evb 1.5s steps(15) both,stripes .35s linear infinite}
+  animation:evb 2.2s steps(22) both,stripes .35s linear infinite}
 @keyframes evb{0%{clip-path:inset(0 100% 0 0)}14%{clip-path:inset(0 0 0 0)}86%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 0 0 100%)}}
 @keyframes stripes{to{background-position:51px 0}}
-.evb b{font-family:var(--dot);font-weight:400;font-size:22px;text-shadow:2px 2px 0 #0A1A5C;animation:evbt .18s steps(1) infinite}
+.evb b{font-family:var(--dot);font-weight:400;font-size:30px;text-shadow:2px 2px 0 #0A1A5C;animation:evbt .18s steps(1) infinite}
 @keyframes evbt{50%{color:#FFE58A}}
-.evb small{font-size:18px;margin-left:10px;text-shadow:2px 2px 0 #0A1A5C}
+.evb small{font-size:20px;margin-left:10px;text-shadow:2px 2px 0 #0A1A5C}
+.arena.evon::after{content:"";position:absolute;inset:0;z-index:4800;pointer-events:none;box-shadow:inset 0 0 0 6px var(--ec);animation:evon .7s steps(2) 2}
+@keyframes evon{50%{box-shadow:inset 0 0 0 6px #FFFFFF}}
+.arena.tense::before{content:"";position:absolute;inset:0;z-index:4700;pointer-events:none;box-shadow:inset 0 0 60px 12px rgba(229,72,77,.55);animation:tense .9s ease-in-out infinite}
+@keyframes tense{50%{box-shadow:inset 0 0 30px 4px rgba(229,72,77,.25)}}
+.gpop.ip{font-size:18px;padding:2px 8px;border:2px solid #FFFFFF;box-shadow:2px 2px 0 #0A1A5C}
+.runner.wedge .tag{background:#E5484D;color:#FFFFFF;animation:wedge .4s steps(1) infinite}
+.runner.wedge .tag::before{content:"아슬 "}
+.runner.wlast .tag{background:#FFE58A}
+.runner.wlast .tag::before{content:"당첨권 "}
+@keyframes wedge{50%{background:#0B1240}}
 .evf{position:absolute;inset:0;z-index:4900;pointer-events:none;background:#FFFFFF;opacity:.3;animation:evf .25s steps(3) forwards}
 @keyframes evf{to{opacity:0}}
 .cd[hidden]{display:none}
@@ -308,16 +318,14 @@ button{font:inherit;cursor:pointer}
   </div>
 
   <div class="bar">
-    <div><label for="mode">당첨 방향</label>
-      <select id="mode"><option value="front">앞에서</option><option value="back">뒤에서</option></select></div>
-    <div><label for="topn">몇 등까지</label><select id="topn"></select></div>
+    <div><label for="win">당첨</label><select id="win"></select><select id="mode" hidden><option value="front">앞에서</option><option value="back">뒤에서</option></select><select id="topn" hidden></select></div>
     <div><label for="gmode">게임</label><select id="gmode"><option value="race">레이스</option><option value="pin">핀볼</option></select></div>
     <button id="go">출발</button>
   </div>
   <details class="howto" open><summary>게임 방법</summary><ul id="howto"></ul></details>
 
   <div class="game">
-    <div class="hud"><div class="hb"><small>TIME</small><b id="time">0.0</b></div><div class="hb"><small>REST</small><b id="rest">1000m</b></div><div class="hb"><small>남은 펭귄</small><b id="left">0</b></div><div class="hb"><small id="winlbl">지금 당첨권</small><b id="wins">-</b></div><button class="ff" id="ff">빨리감기 ▶▶</button>
+    <div class="hud"><div class="hb"><small>TIME</small><b id="time">0.0</b></div><div class="hb"><small>REST</small><b id="rest">1000m</b></div><div class="hb"><small>남은 펭귄</small><b id="left">0</b></div><div class="hb"><small id="winlbl">지금 당첨권</small><b id="wins">-</b></div><button class="ff" id="ff">빨리감기 ▶▶</button><button class="ff" id="snd">소리 켬</button>
       <div class="roul"><span class="slot" id="slot"></span><span id="slotname">ITEM</span></div></div>
     <div class="prog" id="prog"></div>
     <div class="hurry" id="hurry" hidden>HURRY UP!</div>
@@ -376,6 +384,10 @@ function renderChips(){
   const top=$('topn'),keep=+top.value||1;top.innerHTML='';
   for(let i=1;i<=Math.max(1,Math.min(3,names.length-1));i++)top.add(new Option(i===1?'1등만':i+'등까지',i));
   top.value=Math.min(keep,top.options.length);
+  // 261115 당첨 방향·인원을 한 칸으로(네오 피드백 "조건 단순히")
+  const w=$('win'),wk=w.value||($('mode').value+':'+top.value);w.innerHTML='';
+  ['front','back'].forEach(m=>{for(let i=1;i<=top.options.length;i++)w.add(new Option(m==='front'?(i===1?'1등 1명':`1~${i}등 ${i}명`):`꼴찌 ${i}명`,m+':'+i))});
+  w.value=[...w.options].some(o=>o.value===wk)?wk:'front:1';{const [wm,wn]=w.value.split(':');$('mode').value=wm;top.value=wn}
   $('go').disabled=names.length<2||racing;
 }
 function addNames(){
@@ -401,14 +413,16 @@ function sky(){
 // 좌표: x 0~1(출발→결승), y 0~1(빙판 위→아래). y가 0 밑이나 1 위로 밀리면 장외(바다)
 let S=72;const EDGE=14;   // 261007 경기장 폭에 맞춰 build()에서 다시 정함(72~104px)   // 261007 51→64(잘 안 보임)   // 261001 캐릭터 10% 확대(46→51)            // 캐릭터 높이(px), 위아래 바다 폭
 let UNIT=S/38;               // 펭귄 도트 한 칸 크기. 함정·아이템·표시도 같은 칸 크기로 그린다
-const ITEMS=['banana','fish','mush','star','fishbig','polaris','krill'],ITN={banana:'바나나',fish:'물고기',mush:'버섯',star:'별',fishbig:'큰 물고기',polaris:'북극성',krill:'크릴'};   // 261011 큰 물고기·북극성·크릴 추가
+const ITEM_MAX=2;   // 261115 한 마리당 한 판에 아이템 2개까지, 종류 7→5, 상자는 한 번 쓰면 사라짐(네오 피드백 "아이템개수 제한")
+const ITEMS=['banana','fish','mush','star','fishbig'],ITN={banana:'바나나',fish:'물고기',mush:'버섯',star:'별',fishbig:'큰 물고기',polaris:'북극성',krill:'크릴'};   // 261011 큰 물고기·북극성·크릴 추가
 let PIN_P=.37,pinAt=Infinity,pinning=false,pinEnd=0;  // 핀볼 37%
 let GIANT_P=.40,giantAt=Infinity;   // 거대 펭귄 40%
 let DROP_P=.40,dropAt=Infinity;   // 261011 하늘에서 알·돌 낙하 40%
 let TCOL=[];
 let TET_P=.36,tetAt=Infinity,tetris=false,tetEnd=0,tetNext=0,TP=[];   // 테트리스 36%
 let ROCKET_P=.40,SWIM_P=.38,FLEE_P=.45,swimAt=Infinity,swimEnd=0,fleeAt=Infinity,fleeing=false; // 로켓 40%, 얼음 깨짐 38%, 깃발 도망 45% (261002 +5%p → +10%p → +20%p)
-let tiltUntil=0,tiltDir=1;
+let tiltUntil=0,tiltDir=1,heatAt=Infinity,tiltAt=Infinity;
+let tense=false,tenseN=0,tenseCd=0,nextBeat=0,photo=false;   // 261115 쪼는맛: 당첨 경계 다툼 연출
 const TRACK_L=2.5;let VW=600,CAM=0;   // 화면 폭 VW, 빙판 전체 폭 FW = VW×TRACK_L
 let nextShift=0,FW=600,FH=300,G=0,OBJ=[],FEED=[],nextFocus=0,flagsLeft=[1,2,3];
 const fieldEl=()=>$('field');
@@ -453,7 +467,7 @@ function build(){
   const spots=[];
   const spot=()=>{for(let i=0;i<60;i++){const x=rnd(.1,.9),y=rnd(.03,.97);if(spots.every(q=>Math.abs(q.x-x)*FW>60||Math.abs(q.y-y)*FH>40)){spots.push({x,y});return[x,y]}}return[rnd(.1,.9),rnd(.03,.97)]};
   for(let i=0;i<Math.round(6*TRACK_L*.8);i++)addObj('hole',...spot());   // 빙판이 길어진 만큼 구멍·상자도 늘린다
-  for(let i=0;i<Math.ceil(Math.max(4,n*.6)*TRACK_L*.8);i++)addObj('box',...spot());
+  for(let i=0;i<Math.min(8,Math.max(3,Math.ceil(n*.5)));i++)addObj('box',...spot());
   // 남은 거리 막대: 출발~결승 사이에 캐릭터 얼굴 표시
   const pg=$('prog');pg.innerHTML='<span class="pline"></span>'+svg('flag1','pend');
   R.forEach(r=>{pg.insertAdjacentHTML('beforeend',svg(r.look.k,'pm',r.look.c));r.pm=pg.lastElementChild;r.pm.style.left='14px'});
@@ -517,7 +531,7 @@ function cam(snap){
   if(b){b.hidden=!racing&&!nb;b.textContent=left>0?`장외까지 ${left}명 남음`+(nb?` · ◀ ${nb}명 위험`:''):`생존 확정 ${R.length-cutN()}명`+(nb?` · ◀ ${nb}명 뒤따라오는 중`:'')}
 }
 const cutN=()=>Math.floor(R.length/2);   // 장외 정원: 참가자의 절반(홀수면 살아남는 쪽이 한 명 많음)
-function knockOut(r,dir){r.flyDir=dir;r.flyT=1;r.ky=0;r.v=0;r.elim=++elimCount;r.faint=1;fx('pow',r,1);flash(r);shake(320,7);setState(r,'elim',1e9);flyOut(r)}
+function knockOut(r,dir){beep('ko');r.flyDir=dir;r.flyT=1;r.ky=0;r.v=0;r.elim=++elimCount;r.faint=1;fx('pow',r,1);flash(r);shake(320,7);setState(r,'elim',1e9);flyOut(r)}
 function setIcon(r,k){if(r.icon===k)return;r.icon=k;r.ic.style.display=k?'block':'none';if(k){r.ic.innerHTML=svg(k,'');r.ic.style.height=ROWS[k]*r.u+'px'}}
 function setState(r,s,ms){r.rot%=360;if(s!=='down'&&s!=='elim')r.faint=0;r.el.classList.toggle('ko',(s==='down'||s==='elim')&&!!r.faint);r.dur=ms;r.state=s;r.until=G+ms;
   if(s==='hit'||s==='down')r.pose=r.nextPose||pick(['front','back','spin']);if(s==='elim')r.pose=pick(['front','back']);r.nextPose='';if(s==='jump')r.flip=Math.random()<.3;r.el.classList.toggle('swim',s==='swim');r.el.classList.toggle('walk',s==='walk'||s==='jump');
@@ -525,13 +539,14 @@ function setState(r,s,ms){r.rot%=360;if(s!=='down'&&s!=='elim')r.faint=0;r.el.cl
 const alive=r=>!r.done&&!r.elim;   // 완주도 탈락도 아닌 펭귄
 let elimCount=0;
 const free=r=>alive(r)&&(r.state==='walk'||r.state==='jump');
-function stun(r,s,ms,why){if(!alive(r)||r.star>G||r.state==='down')return false;setState(r,s,ms);if(why)feed(why);return true}
+function stun(r,s,ms,why){if(!alive(r)||r.star>G||r.state==='down')return false;setState(r,s,ms);if(why){feed(why);if(/물고기|바나나|돌/.test(why)){pop(r,'아야!','#E5484D');beep('hit')}}return true}
 function knock(t,dir,pow){t.ky+=dir*pow}
 
 function throwFish(a,t,why){const o=addObj('proj',a.x+.02,a.y,{from:a,to:t});if(why)feed(why);return o}
 
 function useItem(r){
   const it=r.item;r.item='';
+  if(it!=='fish'&&it!=='fishbig'||R.some(o=>alive(o)&&o!==r&&o.x>r.x)){pop(r,ITN[it]+'!','#FF9F1C');beep('item')}
   if(it==='banana'){addObj('ban',Math.max(0,r.x-.03),r.y);feed(`${jo(r.name,'이','가')} 바나나를 뒤에 던졌습니다`)}
   if(it==='mush'){r.boost=G+900;fx('dust',r);feed(`${r.name} 버섯 부스터!`)}
   if(it==='star'){r.star=G+2400;fx('spark',r,1);feed(`${r.name} 별 무적 상태!`)}
@@ -602,6 +617,8 @@ function tick(now){
     // 결승
     if(r.x>=1){r.x=1;r.done=++order;r.rot=0;r.z=0;r.ky=0;r.star=0;setState(r,'done',0);r.el.classList.remove('walk','star','boost');
       goalPop(r);
+      {const k=+$('topn').value;if($('mode').value!=='back'&&r.done===k&&!photo){const nx=R.filter(o=>alive(o)&&o!==r).sort((a,b)=>b.x-a.x)[0];
+        if(nx&&1-nx.x<.04){photo=true;slow(1400);eventBanner('사진 판정!',`${r.name} 간발의 차로 당첨, ${nx.name} 아깝다`,'#FFE58A');pop(nx,'아깝다!','#E5484D')}}}
       if(r.done<=3){feed(`${r.name} ${r.done}등 깃발을 뽑았습니다!`);fx('confetti',r,1);slow(r.done===1?900:600)}
       // 깃발 뺏기: 2~5번째 도착자가 30% 확률로 앞선 깃발 주인의 깃발을 빼앗아 순위를 맞바꾼다
       if(r.done>=2&&r.done<=5&&Math.random()<.3){const hold=R.filter(o=>o!==r&&!o.rocketWin&&o.done&&o.done<Math.min(r.done,4));
@@ -639,7 +656,7 @@ function tick(now){
     if(o.type==='box'&&o.back&&G>o.back){o.back=0;o.el.style.visibility='visible'}
     if(o.type==='hole'){for(const r of RS)if(free(r)&&r.z===0&&near(r,o,.45,.3)&&!r.passed?.has(o)){(r.passed||(r.passed=new Set())).add(o);
       if(r.star>G||r.giant>G||Math.random()<.45){setState(r,'jump',380);fx('dust',r);feed(`${r.name} 얼음 구멍을 점프!`)}else{r.x=o.x;r.ty=r.y;setState(r,'hole',800);fx('splash',r);feed(`${r.name} 얼음 구멍에 빠졌습니다`)}}}
-    if(o.type==='box'&&!o.back){for(const r of RS)if(free(r)&&!r.item&&near(r,o,.5,.35)){r.item=pick(ITEMS);r.useAt=G+rnd(300,1400);fx('spark',r);roulette(r,r.item);o.back=G+2500;o.el.style.visibility='hidden';feed(`${r.name} 아이템 획득: ${ITN[r.item]}`);break}}
+    if(o.type==='box'&&!o.back){for(const r of RS)if(free(r)&&!r.item&&(r.got||0)<ITEM_MAX&&near(r,o,.5,.35)){r.item=pick(ITEMS);r.got=(r.got||0)+1;r.useAt=G+rnd(300,1400);fx('spark',r,1);roulette(r,r.item);o.back=Infinity;o.el.style.visibility='hidden';const bl=OBJ.filter(q=>q.type==='box'&&!q.back).length;pop(r,ITN[r.item]+' 획득!','#7C5CFF');beep('item');feed(`${r.name} 아이템 획득: ${ITN[r.item]} · 남은 상자 ${bl}개`);break}}
     if(o.type==='ban'){for(const r of RS)if(free(r)&&r.z===0&&near(r,o,.4,.3)){
       if(r.star>G||r.giant>G){delObj(o);fx('dust',o);break}
       if(Math.random()<.3){setState(r,'jump',380);fx('dust',r);feed(`${r.name} 바나나를 피했습니다`)}else{fx('dust',r,1);r.nextPose='back';stun(r,'hit',700,`${r.name} 바나나 밟고 뒤로 자빠졌습니다`);delObj(o)}break}}
@@ -702,10 +719,13 @@ function tick(now){
     [1,2,3].forEach(k=>{const w=9*UNIT*2,h=12*UNIT*2;$('pole'+k).style.visibility='hidden';
       const o={type:'flee',k,x:rnd(.82,.95),y:(k-1)/2,vx:0,vy:0,w,h,el:mk(svg('flag'+k,''),'flee',w),live:1,turn:0};OBJ.push(o);putObj(o);fx('confetti',o)});
     feed('깃발이 도망갑니다! 잡는 순서대로 1·2·3등');eventBanner('깃발 도망!','잡는 순서대로 1·2·3등','#F7B500')}
-  if(G>nextShift){nextShift=G+rnd(3500,5500);mapShift()}
+  if(G>nextShift){nextShift=G+rnd(6000,8000);mapShift()}
+  if(G>heatAt){heatAt=Infinity;mapShift(pick(['rift','pond','floes']))}
+  if(G>tiltAt){tiltAt=Infinity;mapShift('tilt')}
+  tension(order);
   // 협동 집중 공격: 선두 뒤 0.3 안의 2~3명이 선두에게 물고기를 던진다. 선두는 30% 확률로 반격
   if(G>nextFocus){
-    nextFocus=G+rnd(2500,4200);
+    nextFocus=G+rnd(5000,7000);   // 261115 협동 공격 간격 2배
     const live=R.filter(alive),lead=live.sort((a,b)=>b.x-a.x)[0];
     if(lead){const crew=RS.filter(r=>free(r)&&r!==lead&&lead.x-r.x<.3&&lead.x>r.x).slice(0,3);
       if(crew.length>=2){crew.forEach(c=>throwFish(c,lead));feed(`${crew.map(c=>c.name).join('·')} 협동! 선두 ${lead.name} 집중 공격`);
@@ -1029,6 +1049,31 @@ function endPin(w,late){
   R.forEach(r=>{if(alive(r)){r.rot=0;r.ty=r.y;r.v=rnd(.04,.12);setState(r,'walk',0)}});
 }
 let rt=0;
+// 261115 쪼는맛(네오 피드백 "쪼는맛이 있어야함"): 당첨 마지막 자리 앞뒤 펭귄 표시, 간발 차면 '아슬아슬!', 결승 직전 심장 박동
+function tension(order){
+  if(PB)return;
+  const k=+$('topn').value,back=$('mode').value==='back',live=R.filter(alive),lead=Math.max(...R.map(r=>r.x));
+  const left=back?k-elimCount:k-order;let last=null,edge=null;
+  if(left>0&&live.length>left){
+    if(back){const s=live.slice().sort((a,b)=>a.x-b.x);edge=s[left-1];last=s[left]}   // 뒤에서: 맨 뒤 = 탈락 위기(당첨), 바로 앞 = 아슬
+    else{const s=live.slice().sort((a,b)=>b.x-a.x);last=s[left-1];edge=s[left]}       // 앞에서: 마지막 당첨 자리와 바로 뒤
+  }
+  const on=lead>.45;
+  for(const r of R){r.el.classList.toggle('wlast',on&&r===last);r.el.classList.toggle('wedge',on&&r===edge)}
+  if(on&&last&&edge&&Math.abs(last.x-edge.x)<.03&&G>tenseCd&&tenseN<2){tenseN++;tenseCd=G+3500;
+    pop(last,'아슬아슬!','#FF9F1C');pop(edge,'따라잡아!','#E5484D');feed(`아슬아슬! ${last.name} vs ${edge.name}, 당첨 한 자리 다툼`);eventBanner('아슬아슬!',`${last.name} vs ${edge.name}`,'#FF9F1C')}
+  const hot=left>0&&(back?left===1&&G>2500:lead>.82);
+  if(hot&&!tense){tense=true;document.querySelector('.arena').classList.add('tense');eventBanner(left===1?'마지막 한 자리!':`남은 당첨 ${left}자리`,back?'꼴찌는 누구?':'결승 직전','#E5484D')}
+  if(tense&&G>nextBeat){nextBeat=G+(lead>.93?300:480);beep('beat')}
+}
+function pop(r,t,c){const d=document.createElement('div');d.className='gpop ip';d.textContent=t;if(c)d.style.background=c;
+  d.style.setProperty('--gx',(PX(r.x)-S*.1)+'px');d.style.setProperty('--gy',(FY(r.y)-S*1.35)+'px');d.style.setProperty('--gs',1);worldEl().appendChild(d);setTimeout(()=>d.remove(),1100)}
+// 261115 효과음: 상자·피격·이벤트·장외·골인·심장 박동(소리 끔 단추로 끔)
+let AC=null,SND=true;
+function beep(k){if(!SND)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  const P={item:[[880,.06],[1320,.08]],hit:[[200,.1]],event:[[523,.09],[659,.09],[784,.16]],ko:[[330,.08],[160,.2]],goal:[[784,.08],[1047,.18]],beat:[[62,.13],[0,.06],[58,.11]],tense:[[440,.1],[415,.12]]}[k]||[];
+  let t=AC.currentTime;for(const [f,d] of P){if(f){const o=AC.createOscillator(),g=AC.createGain();o.type=k==='beat'?'sine':'square';o.frequency.value=f;
+    g.gain.setValueAtTime(k==='beat'?.25:.05,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d)}t+=d}}catch(e){}}
 // 아이템 룰렛: 0.06초마다 아이템 그림이 돌다가 받은 아이템에서 멈춘다
 function roulette(r,it){
   const box=$('slot');let n=0;clearInterval(rt);box.classList.add('spin');$('slotname').textContent=r.name;
@@ -1056,7 +1101,9 @@ function placeBand(o){const w=FW-8-S-14;o.el.style.left=(8+o.x*w+S/2)+'px';o.el.
 function eventBanner(title,sub,color){
   const a=document.querySelector('.arena'),f=document.createElement('div'),b=document.createElement('div');
   f.className='evf';b.className='evb';b.style.setProperty('--ec',color);b.innerHTML=`<b>${esc(title)}</b><small>${esc(sub)}</small>`;
-  a.append(f,b);setTimeout(()=>{f.remove();b.remove()},1550);shake(300,5);
+  a.append(f,b);setTimeout(()=>{f.remove();b.remove()},2250);shake(300,5);
+  a.style.setProperty('--ec',color);a.classList.remove('evon');void a.offsetWidth;a.classList.add('evon');setTimeout(()=>a.classList.remove('evon'),1400);   // 261115 경기장 테두리 번쩍 + 소리 + 잠깐 느리게
+  beep('event');if(!PB&&racing)slow(800);
   for(let i=0;i<8;i++)setTimeout(()=>PB?pbFx(pick(['confetti','spark','pow']),PB.cx+rnd(-160,160),PB.cy+rnd(-220,220),1):fx(pick(['confetti','spark','pow']),{x:rnd(.05,.9),y:rnd(.05,.95)},1),i*110);   // 핀볼은 카메라가 보는 곳에 터뜨림
 }
 // 깃발 뺏기 연출: 알림 띠 → 깃발이 포물선으로 날아가 새 주인에게 → 빼앗긴 쪽은 흔들리며 X, 빼앗은 쪽 이름표 노랗게
@@ -1080,7 +1127,7 @@ function koPop(r,ex){
   d.style.setProperty('--gx',(PX(ex.x)+S)+'px');d.style.setProperty('--gy',(ex.y<.5?FY(0)-S*.4:FY(1)-S*.9)+'px');d.style.setProperty('--gs',1.2);
   worldEl().appendChild(d);setTimeout(()=>d.remove(),1350);
 }
-function goalPop(r){
+function goalPop(r){beep('goal');
   const g=fieldEl().querySelector('.goal');if(g){g.classList.remove('hit');void g.offsetWidth;g.classList.add('hit')}
   const d=document.createElement('div'),k=r.done;d.className='gpop'+(k<=3?' r'+k:'');d.textContent=k<=3?`${k}등 GOAL!`:`${k}등 골인`;
   d.style.setProperty('--gx',(PX(r.x)-S*.15)+'px');d.style.setProperty('--gy',(FY(r.y)-S*1.1)+'px');d.style.setProperty('--gs',k===1?1.7:k<=3?1.35:1);
@@ -1098,10 +1145,10 @@ function stealFx(thief,victim){
   thief.el.classList.add('thief');
   eventBanner('깃발 강탈!',`${thief.name} ← ${victim.name}의 ${k}등 깃발`,'#E5484D');
 }
-function mapShift(){
+function mapShift(force){
   // 261007 지구온난화(연못·균열·빙하 조각)는 하나가 끝나기 전엔 새로 나오지 않는다
   const heat=OBJ.some(o=>o.live&&(o.type==='pond'||o.type==='rift'||o.type==='floe'));
-  const k=pick(heat?['move','crack','boxes','snow','tilt']:['move','crack','boxes','snow','rift','rift','pond','pond','floes','floes','tilt']),f=fieldEl();
+  const k=force||pick(['move','crack','snow']),f=fieldEl();   // 261115 자잘한 맵 변화만 수시로, 지구온난화·기울어짐은 큰 이벤트 칸으로
   f.classList.add('shift');setTimeout(()=>f.classList.remove('shift'),350);
   if(k==='move'){OBJ.filter(o=>o.type==='hole').forEach(o=>{o.x=rnd(.15,.9);o.y=rnd(.1,.9);R.forEach(r=>r.passed&&r.passed.delete(o))});feed('맵 변화! 얼음 구멍이 자리를 옮겼습니다')}
   if(k==='crack'){for(let i=0;i<2;i++)fx('splash',addObj('hole',rnd(.3,.9),rnd(.1,.9)),1);feed('맵 변화! 빙판이 갈라져 구멍이 2개 늘었습니다')}
@@ -1150,11 +1197,15 @@ function ranks(){
 
 // 출발 순간 초기화(카운트다운 뒤). 시험용 모의 경주도 이 함수로 시작한다
 function launch(t){
-t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=2500;nextShift=3200;pinMode=!!PB;
+t0=last=t;G=0;elimCount=0;hurryMul=1;hurried=false;nextFocus=3500;nextShift=4500;pinMode=!!PB;
     R.forEach(r=>{r.tv=r.v=rnd(.04,.14);r.steer=rnd(300,900);setState(r,'walk',0)});
     swimAt=Math.random()<SWIM_P?rnd(1500,3500):Infinity;swimEnd=0;fleeing=false;fleeAt=Math.random()<FLEE_P?rnd(2200,3600):Infinity;pinning=false;pinAt=Math.random()<PIN_P?rnd(1200,2400):Infinity;tetris=false;TP=[];TCOL=[];tetAt=Math.random()<TET_P?rnd(1800,3400):Infinity;giantAt=Math.random()<GIANT_P?rnd(2000,6000):Infinity;dropAt=Math.random()<DROP_P?rnd(2500,5500):Infinity;
-    if(pinMode){swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=Infinity;nextShift=nextFocus=Infinity;hurried=true}
-    if(!pinMode&&Math.random()<ROCKET_P){const rk=pick(R);rk.rocketWin=1;setState(rk,'rocket',1e9);rk.el.classList.add('rocket');
+    // 261115 큰 이벤트는 한 판에 2개까지, 1.8~2.8초·4.8~6.2초에 하나씩(네오 피드백 "조건 단순히")
+    swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=heatAt=tiltAt=Infinity;tense=false;tenseN=0;tenseCd=0;nextBeat=0;photo=false;document.querySelector('.arena').classList.remove('tense');
+    const EVQ=shuffle(['swim','flee','pin','tet','giant','drop','heat','tilt','rocket']).slice(0,2);
+    EVQ.filter(e=>e!=='rocket').forEach((e,i)=>{const t=i?rnd(4800,6200):rnd(1800,2800);({swim:()=>swimAt=t,flee:()=>fleeAt=t,pin:()=>pinAt=t,tet:()=>tetAt=t,giant:()=>giantAt=t,drop:()=>dropAt=t,heat:()=>heatAt=t,tilt:()=>tiltAt=t})[e]()});
+    if(pinMode){swimAt=fleeAt=pinAt=tetAt=giantAt=dropAt=heatAt=tiltAt=Infinity;nextShift=nextFocus=Infinity;hurried=true}
+    if(!pinMode&&EVQ.includes('rocket')){const rk=pick(R);rk.rocketWin=1;setState(rk,'rocket',1e9);rk.el.classList.add('rocket');
       R.forEach(o=>{if(o!==rk){setState(o,'down',1200);fx('dust',o,1)}});fx('pow',rk,1);shake(600,9);setTimeout(()=>slow(900),20);setTimeout(()=>feed(`${rk.name} 로켓 발사! 폭풍에 나머지가 모두 엎어졌습니다`)||eventBanner('로켓 발사!',`${rk.name} 혼자 날아갑니다`,'#E5484D'),50)}
     if(!pinMode)feed(`출발! 화면 밖으로 뒤처지면 장외, ${R.length-cutN()}명만 살아남습니다`);
     if(pinMode)pbStart();
@@ -1171,7 +1222,7 @@ function start(){
 function finish(){
   // 탈락자는 완주자 뒤에 늦게 탈락한 순서대로 순위를 받는다
   const F=R.filter(r=>r.done).length;R.filter(r=>r.elim).sort((a,b)=>b.elim-a.elim).forEach((r,i)=>r.done=F+1+i);
-  racing=false;pinning=false;fieldEl().classList.remove('pin');turbo=1;$('ff').classList.remove('on');$('ff').textContent='빨리감기 ▶▶';renderChips();
+  racing=false;pinning=false;fieldEl().classList.remove('pin');tense=false;document.querySelector('.arena').classList.remove('tense');R.forEach(r=>r.el.classList.remove('wlast','wedge'));turbo=1;$('ff').classList.remove('on');$('ff').textContent='빨리감기 ▶▶';renderChips();
   const n=R.length,k=+$('topn').value,back=$('mode').value==='back';
   const sorted=[...R].sort((a,b)=>a.done-b.done),win=r=>back?r.done>n-k:r.done<=k;
   $('rh').textContent='시상식 · 당첨: '+sorted.filter(win).map(r=>r.name).join(', ');
@@ -1184,6 +1235,8 @@ function finish(){
   $('result').hidden=false;$('result').scrollIntoView({behavior:'smooth',block:'nearest'});if(PF){PF.clear();PF.step(0)}fieldEl().style.transform='';ceremony();
 }
 
+$('win').onchange=()=>{const [m,n]=$('win').value.split(':');$('mode').value=m;$('topn').value=n;if(!racing)showWins()};
+$('snd').onclick=()=>{SND=!SND;$('snd').textContent=SND?'소리 켬':'소리 끔';$('snd').classList.toggle('on',!SND)};
 $('ff').onclick=()=>{turbo=turbo===1?3:1;$('ff').classList.toggle('on',turbo>1);$('ff').textContent=turbo>1?'보통 속도 ▶':'빨리감기 ▶▶'};
 $('go').onclick=start;$('again').onclick=start;
 $('copy').onclick=e=>{
@@ -1193,8 +1246,8 @@ $('copy').onclick=e=>{
 };
 const HOW={
   race:['<b>목표</b> 오른쪽 결승선에 먼저 도착. 도착 순서가 등수','<b>깃발 뺏기</b> 뒤따라 들어온 펭귄이 앞 등수 깃발을 빼앗기도 함',
-    '<b>장외</b> 화면 왼쪽 밖으로 뒤처지거나 위·아래 바다로 밀려나면 탈락(참가자 절반까지)','<b>상자</b> 바나나·물고기·별 같은 아이템 무작위. <b>얼음 구멍</b> 잠깐 빠짐',
-    '<b>이벤트</b> 얼음 깨짐·깃발 도망·핀볼·테트리스 등이 무작위로 끼어듦','<b>당첨</b> 앞에서 = 먼저 도착한 순서, 뒤에서 = 먼저 탈락한 순서. 당첨자가 정해지면 바로 시상식'],
+    '<b>장외</b> 화면 왼쪽 밖으로 뒤처지거나 위·아래 바다로 밀려나면 탈락(참가자 절반까지)','<b>상자</b> 한 번 쓰면 사라짐. 한 마리당 아이템 2개까지. <b>얼음 구멍</b> 잠깐 빠짐',
+    '<b>이벤트</b> 한 판에 2번까지, 뜨면 화면 테두리가 번쩍이고 잠깐 느려짐','<b>아슬아슬</b> 당첨 마지막 자리 펭귄은 노란 이름표, 바로 뒤 펭귄은 빨간 이름표','<b>당첨</b> 앞에서 = 먼저 도착한 순서, 뒤에서 = 먼저 탈락한 순서. 당첨자가 정해지면 바로 시상식'],
   pin:['<b>목표</b> 펭귄이 공. 맨 아래 바다로 먼저 떨어진 순서가 등수','<b>플리퍼</b> 처음엔 잘 받아 치다가 점점 힘이 빠짐(13초 안에 끝)',
     '<b>당첨</b> 앞에서 = 먼저 떨어진 펭귄, 뒤에서 = 판 위에 끝까지 남은 펭귄. 당첨자가 정해지면 바로 시상식']};
 function howto(){$('howto').innerHTML=HOW[$('gmode').value].map(s=>`<li>${s}</li>`).join('')}
